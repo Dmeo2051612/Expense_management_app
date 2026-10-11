@@ -26,7 +26,23 @@ namespace Expense_management_app.Entities
         [Column("loai_tk", TypeName = "varchar(20)")]
         public string LoaiTk { get; set; } = string.Empty;
 
-        [Required]
+        [Column("sodu_bandau",TypeName = "decimal(18, 2)")]
+        public decimal SoDuBanDau { get; set; }
 
+        [Column("sodu_hientai",TypeName ="decimal(18, 2)")]
+        public decimal SoDuHienTai {  get; set; }
+
+        [ConcurrencyCheck]
+        [Column("version")]
+        public int Version { get; set; }
+
+        [Column("donvi_tiente", TypeName = "char(3)")]
+        public string DonViTienTe { get; set; } = "VND";
+
+        [Column("ngay_tao")]
+        public DateTime NgayTao { get;set; }
+
+        [Column("trangthai")]
+        public bool TrangThai { get; set; } = true;
     }
 }

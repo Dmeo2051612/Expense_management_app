@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Expense_management_app")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8e7fd8b4fa11e7c8e69f0cb00add41c0cd96f10b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f95f68432a08d4d950c61f1dcbb1e3de7cc42ba2")]
 [assembly: System.Reflection.AssemblyProductAttribute("Expense_management_app")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Expense_management_app")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
