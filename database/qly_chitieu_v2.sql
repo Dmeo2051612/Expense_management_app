@@ -16,6 +16,40 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Table structure for table `chuyen_khoan`
+--
+
+DROP TABLE IF EXISTS `chuyen_khoan`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `chuyen_khoan` (
+  `chuyen_khoan_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `tk_nguon_id` int NOT NULL,
+  `tk_dich_id` int NOT NULL,
+  `so_tien` decimal(18,2) NOT NULL,
+  `ngay_tao` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `mota` varchar(250) DEFAULT NULL,
+  PRIMARY KEY (`chuyen_khoan_id`),
+  KEY `fk_chuyenkhoan_nguon_user` (`tk_nguon_id`,`user_id`),
+  KEY `fk_chuyenkhoan_dich_user` (`tk_dich_id`,`user_id`),
+  CONSTRAINT `fk_chuyenkhoan_dich_user` FOREIGN KEY (`tk_dich_id`, `user_id`) REFERENCES `tai_khoan` (`tk_id`, `user_id`),
+  CONSTRAINT `fk_chuyenkhoan_nguon_user` FOREIGN KEY (`tk_nguon_id`, `user_id`) REFERENCES `tai_khoan` (`tk_id`, `user_id`),
+  CONSTRAINT `ck_chuyenkhoan_khac_tk` CHECK ((`tk_nguon_id` <> `tk_dich_id`)),
+  CONSTRAINT `ck_chuyenkhoan_so_tien` CHECK ((`so_tien` > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `chuyen_khoan`
+--
+
+LOCK TABLES `chuyen_khoan` WRITE;
+/*!40000 ALTER TABLE `chuyen_khoan` DISABLE KEYS */;
+/*!40000 ALTER TABLE `chuyen_khoan` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `danh_muc`
 --
 
@@ -306,4 +340,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-11 11:37:15
+-- Dump completed on 2026-10-11 17:20:58
