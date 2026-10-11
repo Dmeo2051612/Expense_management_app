@@ -1,0 +1,62 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|d:\\ute\\git\\project-quan-ly-chi-tieu\\expense_management_app\\entities\\taikhoan.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|solutionrelative:entities\\taikhoan.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|d:\\ute\\git\\project-quan-ly-chi-tieu\\expense_management_app\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 264,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{eefa5220-e298-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{b1e99781-ab81-11d0-b683-00aa00a3ee26}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "TaiKhoan.cs",
+              "DocumentMoniker": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Entities\\TaiKhoan.cs",
+              "RelativeDocumentMoniker": "Entities\\TaiKhoan.cs",
+              "ToolTip": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Entities\\TaiKhoan.cs",
+              "RelativeToolTip": "Entities\\TaiKhoan.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-11T10:32:23.21Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Program.cs",
+              "RelativeDocumentMoniker": "Program.cs",
+              "ToolTip": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Program.cs",
+              "RelativeToolTip": "Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-11T10:29:53.061Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
