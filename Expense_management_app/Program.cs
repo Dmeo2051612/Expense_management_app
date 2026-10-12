@@ -3,10 +3,17 @@ using Expense_management_app.Interceptors;
 using Expense_management_app.Interfaces;
 using Expense_management_app.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer();
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddSingleton<TaiKhoanVersionInterceptor>();
 
@@ -32,11 +39,15 @@ builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler();
-}
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
 app.Run();
+
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler();
+}

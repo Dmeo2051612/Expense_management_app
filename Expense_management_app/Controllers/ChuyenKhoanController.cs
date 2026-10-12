@@ -7,11 +7,12 @@ using Expense_management_app.Interfaces;
 using Expense_management_app.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Http; 
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Expense_management_app.Controllers
 {
-
+    [Authorize]
     [ApiController]
     [Route("api/chuyen-khoan")]
     public class ChuyenKhoanController : ControllerBase

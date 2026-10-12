@@ -38,4 +38,13 @@ D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\obj\Debug\net8.0\Expe
 D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\obj\Debug\net8.0\Expense_management_app.genruntimeconfig.cache
 D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\obj\Debug\net8.0\ref\Expense_management_app.dll
 D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\bin\Debug\net8.0\appsettings.json
+D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\bin\Debug\net8.0\Microsoft.IdentityModel.Abstractions.dll
+D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\bin\Debug\net8.0\Microsoft.IdentityModel.JsonWebTokens.dll
+D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\bin\Debug\net8.0\Microsoft.IdentityModel.Logging.dll
+D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.dll
+D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
+D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll
+D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\bin\Debug\net8.0\appsettings.Development.json
 D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
