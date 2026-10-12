@@ -32,5 +32,13 @@ namespace Expense_management_app.Entities
 
         [Column("mota", TypeName = "varchar(250)")]
         public string MoTa {  get; set; } = string.Empty;
+
+        [Required]
+        [Column("idempotency_key", TypeName = "char(36)")]
+        public string IdempotencyKey { get; set; } = string.Empty;
+
+        [Required]
+        [Column("request_hash", TypeName = "char(64)")]
+        public string RequestHash { get; set; } = string.Empty;
     }
 }

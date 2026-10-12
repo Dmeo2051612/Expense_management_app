@@ -30,7 +30,10 @@ CREATE TABLE `chuyen_khoan` (
   `so_tien` decimal(18,2) NOT NULL,
   `ngay_tao` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `mota` varchar(250) DEFAULT NULL,
+  `idempotency_key` char(36) NOT NULL,
+  `request_hash` char(64) NOT NULL,
   PRIMARY KEY (`chuyen_khoan_id`),
+  UNIQUE KEY `uq_chuyenkhoan_user_key` (`user_id`,`idempotency_key`),
   KEY `fk_chuyenkhoan_nguon_user` (`tk_nguon_id`,`user_id`),
   KEY `fk_chuyenkhoan_dich_user` (`tk_dich_id`,`user_id`),
   CONSTRAINT `fk_chuyenkhoan_dich_user` FOREIGN KEY (`tk_dich_id`, `user_id`) REFERENCES `tai_khoan` (`tk_id`, `user_id`),
@@ -340,4 +343,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-11 17:20:58
+-- Dump completed on 2026-10-12 18:31:27

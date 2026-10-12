@@ -37,6 +37,14 @@ namespace Expense_management_app.Data
                 .Property(x => x.NgayTao)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .ValueGeneratedOnAdd();
+
+            modelBuilder.Entity<TaiKhoan>()
+                .Property(x => x.Version)
+                .IsConcurrencyToken();
+
+            modelBuilder.Entity<ChuyenKhoan>()
+                .HasIndex(x => new { x.UserId, x.IdempotencyKey })
+                .IsUnique();
         }
     }
 }
