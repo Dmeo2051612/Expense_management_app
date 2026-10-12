@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Expense_management_app": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:58097;http://localhost:58098"
+    }
+  }
+}

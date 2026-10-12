@@ -38,3 +38,4 @@ D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\obj\Debug\net8.0\Expe
 D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\obj\Debug\net8.0\Expense_management_app.genruntimeconfig.cache
 D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\obj\Debug\net8.0\ref\Expense_management_app.dll
 D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\bin\Debug\net8.0\appsettings.json
+D:\UTE\GIT\project-quan-ly-chi-tieu\Expense_management_app\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
