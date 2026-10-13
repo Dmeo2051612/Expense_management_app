@@ -1,0 +1,11 @@
+# environment secrets
+.env
+.env.*
+!.env.example
+
+# development secrets
+**/appsettings.Development.json
+
+# build artifacts
+**/bin/
+**/obj/
