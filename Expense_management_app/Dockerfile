@@ -22,6 +22,8 @@ COPY --from=build /app/publish .
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
+USER app
+
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=20 \
     CMD curl -fsS http://127.0.0.1:8080/healthz || exit 1
 
