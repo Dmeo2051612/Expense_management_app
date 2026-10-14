@@ -1,7 +1,5 @@
 ﻿using Expense_management_app.Entities;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Reflection.Emit;
 
 namespace Expense_management_app.Data
 {
@@ -16,13 +14,13 @@ namespace Expense_management_app.Data
         public DbSet<TaiKhoan> TaiKhoans { get; set; }
             = null!;
 
-        //public DbSet<ChuyenKhoan> ChuyenKhoans { get; set; }
-        //    = null!;
+        public DbSet<ChuyenKhoan> ChuyenKhoans { get; set; }
+            = null!;
 
         protected override void OnModelCreating(
-    ModelBuilder modelBuilder)
+            ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder); 
+            base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<TaiKhoan>()
                 .Property(x => x.Version)
@@ -34,4 +32,4 @@ namespace Expense_management_app.Data
                 .ValueGeneratedOnAdd();
         }
     }
-}
+}   
