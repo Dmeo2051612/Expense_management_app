@@ -132,7 +132,7 @@ namespace Expense_management_app.Services
                     RequestHash = requestHash
                 };
 
-                _dbContext.ChuyenKhoans.Add(chuyenKhoan);
+                _dbContext.Set<ChuyenKhoan>().Add(chuyenKhoan);             
 
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
@@ -233,7 +233,7 @@ namespace Expense_management_app.Services
             string key,
             CancellationToken cancellationToken)
         {
-            return _dbContext.ChuyenKhoans
+            return _dbContext.Set<ChuyenKhoan>()
                 .AsNoTracking()
                 .SingleOrDefaultAsync(
                     x => x.UserId == userId

@@ -16,13 +16,13 @@ namespace Expense_management_app.Data
         public DbSet<TaiKhoan> TaiKhoans { get; set; }
             = null!;
 
-        public DbSet<ChuyenKhoan> ChuyenKhoans { get; set; }
-            = null!;
+        //public DbSet<ChuyenKhoan> ChuyenKhoans { get; set; }
+        //    = null!;
 
         protected override void OnModelCreating(
-            ModelBuilder modelBuilder)
+    ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder);
+            base.OnModelCreating(modelBuilder); 
 
             modelBuilder.Entity<TaiKhoan>()
                 .Property(x => x.Version)
@@ -32,19 +32,6 @@ namespace Expense_management_app.Data
                 .Property(x => x.NgayTao)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .ValueGeneratedOnAdd();
-
-            modelBuilder.Entity<ChuyenKhoan>()
-                .Property(x => x.NgayTao)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .ValueGeneratedOnAdd();
-
-            modelBuilder.Entity<TaiKhoan>()
-                .Property(x => x.Version)
-                .IsConcurrencyToken();
-
-            modelBuilder.Entity<ChuyenKhoan>()
-                .HasIndex(x => new { x.UserId, x.IdempotencyKey })
-                .IsUnique();
         }
     }
 }
