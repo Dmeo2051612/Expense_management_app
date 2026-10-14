@@ -30,6 +30,20 @@ namespace Expense_management_app.Data
                 .Property(x => x.NgayTao)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .ValueGeneratedOnAdd();
+
+            modelBuilder.Entity<ChuyenKhoan>()
+                .Property(x => x.NgayTao)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .ValueGeneratedOnAdd();
+
+            modelBuilder.Entity<ChuyenKhoan>()
+                .HasIndex(x => new
+                {
+                    x.UserId,
+                    x.IdempotencyKey
+                })
+                .HasDatabaseName("uq_chuyenkhoan_user_key")
+                .IsUnique();
         }
     }
-}   
+}

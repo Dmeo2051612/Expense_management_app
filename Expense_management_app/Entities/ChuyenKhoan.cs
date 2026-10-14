@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Expense_management_app.Entities
@@ -28,9 +29,11 @@ namespace Expense_management_app.Entities
         [Column("mota", TypeName = "varchar(250)")]
         public string MoTa { get; set; } = string.Empty;
 
+        [Required]
         [Column("idempotency_key")]
         public string IdempotencyKey { get; set; } = string.Empty;
 
+        [Required]
         [Column("request_hash")]
         public string RequestHash { get; set; } = string.Empty;
     }
