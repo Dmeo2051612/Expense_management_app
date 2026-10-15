@@ -1,20 +1,26 @@
-# Finora — giao diện mô phỏng quản lý chi tiêu
+# Finora Frontend Prototype
 
-## Mở giao diện
+Frontend static prototype using HTML, CSS and JavaScript.
 
-1. Giải nén thư mục.
-2. Để `index.html`, `style.css` và `app.js` cùng thư mục.
-3. Mở `index.html` bằng trình duyệt, hoặc mở thư mục bằng VS Code và dùng Live Server.
+## Run locally
 
-## Tương tác đang có
+From this folder, run:
 
-- Mở form và thêm giao dịch thu/chi.
-- Cập nhật các con số demo khi thêm giao dịch.
-- Lọc giao dịch theo từ khóa và loại thu/chi.
-- Tìm kiếm nhanh từ nút kính lúp.
-- Chuyển phạm vi biểu đồ 3, 6 và 12 tháng.
-- Dữ liệu prototype được lưu bằng `localStorage` trong trình duyệt.
+```powershell
+python -m http.server 8080 --bind 127.0.0.1
+```
 
-## Giới hạn
+Open `http://localhost:8080`.
 
-Đây vẫn là prototype frontend, chưa gọi Flask Gateway, chưa xác thực JWT và chưa ghi dữ liệu vào MySQL. Dữ liệu demo có thể xóa bằng DevTools của trình duyệt (Application/Storage → Local Storage → xóa `finora-demo-state-v1`). Không nhập thông tin tài chính thật.
+## Connect to local API
+
+The frontend calls Flask Gateway at `http://127.0.0.1:8081`. In the account panel, enter a JWT created by the application's `/api/auth/login` endpoint and press **Tải từ API**. After a successful connection, the form **Tạo tài khoản** becomes available. Creating an account calls `POST /api/tai-khoan`, then refreshes the list using `GET /api/tai-khoan`.
+
+The JWT is held only in JavaScript memory and is not written to localStorage/sessionStorage. Reloading the page clears it; paste a fresh token and reconnect.
+
+The transaction table, budgets, chart and add-transaction modal remain demo-only and are not connected to backend APIs.
+
+
+## Đăng nhập API
+
+Giao diện gọi `POST /api/auth/login` qua Flask Gateway bằng email và mật khẩu, giữ access token chỉ trong bộ nhớ JavaScript của phiên trang, sau đó gọi `GET /api/tai-khoan`. Nút đăng xuất xóa token khỏi bộ nhớ. Không lưu JWT vào `localStorage` hoặc `sessionStorage`.

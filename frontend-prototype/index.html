@@ -166,13 +166,53 @@
             <span class="api-badge" id="apiBadge">DEMO</span>
           </div>
 
-          <form class="api-connect-panel" id="apiConnectionForm">
-            <label for="apiTokenInput">JWT access token <span>(chỉ dùng trong phiên hiện tại)</span></label>
+          <form class="api-connect-panel" id="loginForm">
+            <label for="loginEmail">Email</label>
             <div class="api-connect-row">
-              <input id="apiTokenInput" name="token" type="password" autocomplete="off" spellcheck="false" placeholder="Dán token phát triển vào đây" required />
-              <button class="primary-button api-load-button" id="loadAccountsBtn" type="submit">Tải từ API</button>
+              <input id="loginEmail" name="email" type="email" maxlength="254" autocomplete="username" placeholder="demo3@example.com" required />
             </div>
-            <p class="api-connection-status" id="apiConnectionStatus" role="status" aria-live="polite">Chưa kết nối. Token không được lưu vào localStorage.</p>
+            <label for="loginPassword">Mật khẩu</label>
+            <div class="api-connect-row">
+              <input id="loginPassword" name="matKhau" type="password" autocomplete="current-password" required placeholder="Nhập mật khẩu của bạn" />
+              <button class="primary-button api-load-button" id="loginBtn" type="submit">Đăng nhập</button>
+            </div>
+          </form>
+
+          <div class="api-connect-panel api-session-panel" id="apiSessionPanel" hidden>
+            <div class="api-session-row">
+              <div class="api-session-user">
+                <strong id="apiUserName">Đã đăng nhập</strong>
+                <span id="apiUserEmail"></span>
+              </div>
+              <div class="api-session-actions">
+                <button class="api-secondary-button" id="refreshAccountsBtn" type="button">Tải lại tài khoản</button>
+                <button class="api-secondary-button" id="logoutBtn" type="button">Đăng xuất</button>
+              </div>
+            </div>
+          </div>
+          <p class="api-connection-status" id="apiConnectionStatus" role="status" aria-live="polite">Chưa đăng nhập. Đăng nhập để tải tài khoản của bạn.</p>
+
+          <form class="api-create-account-panel" id="createAccountForm" hidden>
+            <div class="api-create-heading">
+              <div><h3>Tạo tài khoản</h3><p>Tài khoản sẽ được lưu vào MySQL qua API.</p></div>
+            </div>
+            <div class="api-create-fields">
+              <label for="newAccountName">Tên tài khoản
+                <input id="newAccountName" name="tenTk" type="text" maxlength="100" required placeholder="Ví dụ: Ví tiết kiệm" />
+              </label>
+              <label for="newAccountType">Loại tài khoản
+                <select id="newAccountType" name="loaiTk" required>
+                  <option value="cash">Ví tiền mặt</option>
+                  <option value="bank">Tài khoản ngân hàng</option>
+                  <option value="wallet">Ví điện tử</option>
+                </select>
+              </label>
+              <label for="newAccountOpeningBalance">Số dư ban đầu (VND)
+                <input id="newAccountOpeningBalance" name="soDuBanDau" type="number" min="0" max="9999999999999999.99" step="0.01" value="0" required />
+              </label>
+            </div>
+            <button class="primary-button api-create-button" id="createAccountButton" type="submit">Tạo tài khoản</button>
+            <p class="api-connection-status" id="createAccountStatus" role="status" aria-live="polite">Kết nối API trước khi tạo tài khoản.</p>
           </form>
 
           <div id="demoAccountsContainer">

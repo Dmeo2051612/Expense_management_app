@@ -239,3 +239,30 @@ td:first-child { padding-left: 11px; }
 .api-empty-state { padding: 20px 10px; text-align: center; color: #8e9ba3; font-size: 10px; }
 @media (max-width: 620px) { .api-connect-row { flex-direction: column; } .api-load-button { width: 100%; } .api-account-card { align-items: start; } .api-account-balance { max-width: 42%; font-size: 10px; } }
 .api-accounts-container[hidden] { display: none; }
+
+
+/* API-backed account creation */
+.api-create-account-panel { margin-top: 12px; padding: 12px; border: 1px solid #e6eeea; border-radius: 9px; background: #fff; }
+.api-create-account-panel[hidden] { display: none; }
+.api-create-heading h3 { margin: 0; color: #344650; font-size: 12px; }
+.api-create-heading p { margin: 4px 0 10px; color: #87949d; font-size: 9px; line-height: 1.5; }
+.api-create-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.api-create-fields label { display: grid; gap: 6px; color: #52616a; font-size: 10px; font-weight: 700; }
+.api-create-fields label:first-child { grid-column: 1 / -1; }
+.api-create-fields input, .api-create-fields select { min-width: 0; width: 100%; box-sizing: border-box; border: 1px solid #dfe8e3; border-radius: 7px; background: #fff; padding: 10px 11px; color: #344650; font: inherit; font-size: 11px; outline: none; }
+.api-create-fields input:focus, .api-create-fields select:focus { border-color: #239b77; box-shadow: 0 0 0 3px #239b7718; }
+.api-create-button { justify-content: center; width: 100%; margin-top: 10px; padding: 10px 12px; box-shadow: none; font-size: 10px; }
+.api-create-button:disabled { opacity: .65; cursor: wait; }
+@media (max-width: 620px) { .api-create-fields { grid-template-columns: 1fr; } .api-create-fields label:first-child { grid-column: auto; } }
+
+/* API login/session controls */
+.api-session-panel[hidden] { display: none; }
+.api-session-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.api-session-user { display: grid; gap: 4px; min-width: 0; }
+.api-session-user strong { color: #344650; font-size: 11px; overflow-wrap: anywhere; }
+.api-session-user span { color: #87949d; font-size: 10px; overflow-wrap: anywhere; }
+.api-session-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
+.api-secondary-button { border: 1px solid #dfe8e3; padding: 10px 12px; background: #fff; color: #344650; border-radius: 8px; font-weight: 700; font-size: 10px; }
+.api-secondary-button:hover { border-color: #239b77; color: #167657; }
+.api-secondary-button:disabled { opacity: .65; cursor: wait; }
+@media (max-width: 620px) { .api-session-row { align-items: stretch; flex-direction: column; } .api-session-actions { display: grid; grid-template-columns: 1fr 1fr; } .api-secondary-button { justify-content: center; } }

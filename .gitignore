@@ -9,3 +9,11 @@
 # build artifacts
 **/bin/
 **/obj/
+
+# Visual Studio cache
+.vs/
+**/.vs/
+
+# .NET build output
+**/bin/
+**/obj/

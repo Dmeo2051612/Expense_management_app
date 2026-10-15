@@ -50,6 +50,8 @@
   let state = loadState();
   let toastTimer = null;
   let chartRangeIndex = 1;
+  let activeApiToken = null;
+  let activeApiUser = null;
   const chartRanges = [3, 6, 12];
 
   const $ = (selector, parent = document) => parent.querySelector(selector);
@@ -335,32 +337,110 @@
     }).join("");
   }
 
-  async function loadAccountsFromApi(event) {
+  async function loginToApi(event) {
     event.preventDefault();
 
-    const tokenInput = $("#apiTokenInput");
+    const emailInput = $("#loginEmail");
+    const passwordInput = $("#loginPassword");
     const status = $("#apiConnectionStatus");
-    const button = $("#loadAccountsBtn");
-    const token = tokenInput.value.trim();
+    const button = $("#loginBtn");
 
-    if (!token) {
-      status.textContent = "Vui lòng nhập JWT access token.";
+    button.disabled = true;
+    button.textContent = "Đang đăng nhập...";
+    status.className = "api-connection-status";
+    status.textContent = "Đang xác thực thông tin đăng nhập...";
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: emailInput.value.trim(),
+          matKhau: passwordInput.value
+        }),
+        cache: "no-store"
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      const body = contentType.includes("application/json")
+        ? await response.json()
+        : await response.text();
+
+      if (!response.ok) {
+        let message = "Không thể đăng nhập.";
+        if (response.status === 400) {
+          message = body?.detail || body?.title || "Vui lòng kiểm tra email và mật khẩu.";
+        } else if (response.status === 401) {
+          message = "Email hoặc mật khẩu không đúng.";
+        } else if (response.status === 429) {
+          message = "Bạn gửi yêu cầu quá nhanh. Hãy đợi một lát rồi thử lại.";
+        } else if (response.status === 502) {
+          message = "502: Flask không kết nối được backend C#; kiểm tra BACKEND_URL.";
+        } else if (response.status === 503) {
+          message = "503: Gateway hoặc Redis đang gặp sự cố.";
+        } else if (body && typeof body === "object") {
+          message = body.detail || body.title || body.message || message;
+        }
+        throw new Error(`${response.status}: ${message}`);
+      }
+
+      if (!body || typeof body.accessToken !== "string" || !body.accessToken) {
+        throw new Error("API đăng nhập không trả về accessToken hợp lệ.");
+      }
+
+      activeApiToken = body.accessToken;
+      activeApiUser = {
+        userId: body.userId,
+        hoTen: body.hoTen || "Người dùng",
+        email: body.email || emailInput.value.trim()
+      };
+
+      passwordInput.value = "";
+      $("#loginForm").hidden = true;
+      $("#apiSessionPanel").hidden = false;
+      $("#apiSessionPanel").removeAttribute("hidden");
+      $("#apiUserName").textContent = `${activeApiUser.hoTen} · User #${activeApiUser.userId}`;
+      $("#apiUserEmail").textContent = activeApiUser.email;
+      status.textContent = "Đăng nhập thành công. Đang tải danh sách tài khoản...";
+      status.className = "api-connection-status is-success";
+
+      await refreshAccountsFromApi();
+    } catch (error) {
+      status.textContent = error instanceof TypeError
+        ? "Không thể gọi API. Kiểm tra Flask, CORS và địa chỉ http://localhost:8080."
+        : (error.message || "Đã xảy ra lỗi khi đăng nhập.");
       status.className = "api-connection-status is-error";
-      tokenInput.focus();
+    } finally {
+      button.disabled = false;
+      button.textContent = "Đăng nhập";
+      // JWT chỉ được giữ trong bộ nhớ của trang, không lưu vào Web Storage.
+    }
+  }
+
+  async function refreshAccountsFromApi() {
+    const status = $("#apiConnectionStatus");
+    const button = $("#refreshAccountsBtn");
+
+    if (!activeApiToken) {
+      status.textContent = "Vui lòng đăng nhập trước.";
+      status.className = "api-connection-status is-error";
       return;
     }
 
     button.disabled = true;
     button.textContent = "Đang tải...";
+    status.textContent = "Đang tải danh sách tài khoản...";
     status.className = "api-connection-status";
-    status.textContent = "Đang gọi Flask Gateway để lấy danh sách tài khoản...";
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/tai-khoan`, {
         method: "GET",
         headers: {
           "Accept": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Authorization": `Bearer ${activeApiToken}`
         },
         cache: "no-store"
       });
@@ -373,7 +453,12 @@
       if (!response.ok) {
         let message = "Không thể tải tài khoản.";
         if (response.status === 401) {
-          message = "401: JWT không hợp lệ, hết hạn hoặc cấu hình xác thực chưa khớp.";
+          activeApiToken = null;
+          activeApiUser = null;
+          $("#loginForm").hidden = false;
+          $("#apiSessionPanel").hidden = true;
+          $("#createAccountForm").hidden = true;
+          message = "401: Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.";
         } else if (response.status === 403) {
           message = "403: Bạn không có quyền xem danh sách tài khoản.";
         } else if (response.status === 502) {
@@ -381,7 +466,7 @@
         } else if (response.status === 503) {
           message = "503: Gateway chưa kết nối được Redis hoặc dịch vụ bảo vệ đang lỗi.";
         } else if (body && typeof body === "object") {
-          message = body.detail || body.title || body.error || message;
+          message = body.detail || body.title || body.message || message;
         }
         throw new Error(`${response.status}: ${message}`);
       }
@@ -391,18 +476,157 @@
       }
 
       renderApiAccounts(body);
-      status.textContent = `Kết nối thành công. Đã tải ${body.length} tài khoản từ API.`;
+      $("#createAccountForm").hidden = false;
+      $("#createAccountForm").removeAttribute("hidden");
+      $("#createAccountStatus").textContent = "Sẵn sàng tạo tài khoản bằng API.";
+      $("#createAccountStatus").className = "api-connection-status";
+      status.textContent = `Đăng nhập thành công. Đã tải ${body.length} tài khoản từ API.`;
       status.className = "api-connection-status is-success";
       showToast(`Đã tải ${body.length} tài khoản từ backend.`);
     } catch (error) {
       status.textContent = error instanceof TypeError
-        ? "Không thể gọi API. Kiểm tra Flask, CORS và địa chỉ http://localhost:8080."
-        : (error.message || "Đã xảy ra lỗi khi gọi API.");
+        ? "Không thể gọi API. Kiểm tra Flask, CORS và địa chỉ frontend."
+        : (error.message || "Đã xảy ra lỗi khi tải tài khoản.");
       status.className = "api-connection-status is-error";
     } finally {
       button.disabled = false;
-      button.textContent = "Tải từ API";
-      // Không lưu JWT trong localStorage/sessionStorage.
+      button.textContent = "Tải lại tài khoản";
+    }
+  }
+
+  function logoutFromApi() {
+    activeApiToken = null;
+    activeApiUser = null;
+    $("#loginPassword").value = "";
+    $("#loginForm").hidden = false;
+    $("#apiSessionPanel").hidden = true;
+    $("#createAccountForm").hidden = true;
+    $("#apiAccountsContainer").hidden = true;
+    $("#demoAccountsContainer").hidden = false;
+    $("#apiBadge").textContent = "DEMO";
+    $("#apiBadge").classList.remove("is-connected");
+    $("#accountsSubtitle").textContent = "Dữ liệu đang là minh họa; đăng nhập để tải danh sách thật.";
+    const status = $("#apiConnectionStatus");
+    status.textContent = "Đã đăng xuất. JWT đã được xóa khỏi bộ nhớ của trang.";
+    status.className = "api-connection-status";
+    showToast("Đã đăng xuất khỏi Finora.");
+  }
+
+  async function createAccountFromApi(event) {
+    event.preventDefault();
+
+    const status = $("#createAccountStatus");
+    const button = $("#createAccountButton");
+
+    if (!activeApiToken) {
+      status.textContent = "Vui lòng kết nối API và tải danh sách tài khoản trước.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    const tenTk = $("#newAccountName").value.trim();
+    const loaiTk = $("#newAccountType").value;
+    const soDuBanDau = Number($("#newAccountOpeningBalance").value);
+
+    if (!tenTk || tenTk.length > 100) {
+      status.textContent = "Tên tài khoản phải có từ 1 đến 100 ký tự.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    if (!Number.isFinite(soDuBanDau) || soDuBanDau < 0 ||
+        soDuBanDau > 9999999999999999.99 ||
+        Math.round(soDuBanDau * 100) !== soDuBanDau * 100) {
+      status.textContent = "Số dư phải không âm và có tối đa 2 chữ số thập phân.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Đang tạo...";
+    status.textContent = "Đang gửi yêu cầu tạo tài khoản...";
+    status.className = "api-connection-status";
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tai-khoan`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${activeApiToken}`
+        },
+        body: JSON.stringify({ tenTk, loaiTk, soDuBanDau }),
+        cache: "no-store"
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      const responseBody = contentType.includes("application/json")
+        ? await response.json()
+        : await response.text();
+
+      if (!response.ok) {
+        let message = "Không thể tạo tài khoản.";
+        if (response.status === 400) {
+          message = responseBody?.detail || responseBody?.title || "Dữ liệu tài khoản không hợp lệ.";
+        } else if (response.status === 401) {
+          message = "401: JWT hết hạn hoặc không hợp lệ. Hãy đăng nhập lại và tải danh sách tài khoản.";
+          activeApiToken = null;
+          activeApiUser = null;
+          $("#loginForm").hidden = false;
+          $("#apiSessionPanel").hidden = true;
+          $("#createAccountForm").hidden = true;
+          $("#apiConnectionStatus").textContent = message;
+          $("#apiConnectionStatus").className = "api-connection-status is-error";
+        } else if (response.status === 403) {
+          message = "403: Bạn không có quyền tạo tài khoản.";
+        } else if (response.status === 502) {
+          message = "502: Flask không kết nối được backend C#.";
+        } else if (response.status === 503) {
+          message = "503: Gateway hoặc Redis đang gặp sự cố.";
+        } else if (responseBody && typeof responseBody === "object") {
+          message = responseBody.detail || responseBody.title || responseBody.message || message;
+        }
+        throw new Error(`${response.status}: ${message}`);
+      }
+
+      const createdId = responseBody && typeof responseBody === "object"
+        ? responseBody.tkId
+        : null;
+
+      const listResponse = await fetch(`${API_BASE_URL}/api/tai-khoan`, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+          "Authorization": `Bearer ${activeApiToken}`
+        },
+        cache: "no-store"
+      });
+
+      if (!listResponse.ok) {
+        throw new Error(`Tài khoản đã được tạo nhưng không tải lại được danh sách (HTTP ${listResponse.status}). Nhấn Tải từ API để làm mới.`);
+      }
+
+      const accounts = await listResponse.json();
+      if (!Array.isArray(accounts)) {
+        throw new Error("Tài khoản đã được tạo nhưng API danh sách trả về sai định dạng.");
+      }
+
+      renderApiAccounts(accounts);
+      status.textContent = `Tạo tài khoản thành công${createdId != null ? ` (mã #${createdId})` : ""}. Đã tải lại ${accounts.length} tài khoản.`;
+      status.className = "api-connection-status is-success";
+      $("#apiConnectionStatus").textContent = `Kết nối thành công. Đã tải ${accounts.length} tài khoản từ API.`;
+      $("#apiConnectionStatus").className = "api-connection-status is-success";
+      $("#createAccountForm").reset();
+      $("#newAccountOpeningBalance").value = "0";
+      showToast("Đã tạo tài khoản và tải lại danh sách từ API.");
+    } catch (error) {
+      status.textContent = error instanceof TypeError
+        ? "Không thể gọi API. Kiểm tra Flask, CORS và địa chỉ frontend."
+        : (error.message || "Đã xảy ra lỗi khi tạo tài khoản.");
+      status.className = "api-connection-status is-error";
+    } finally {
+      button.disabled = false;
+      button.textContent = "Tạo tài khoản";
     }
   }
 
@@ -430,7 +654,10 @@
     $("#transactionDate").value = today.toLocaleDateString("en-CA");
 
     $("#addTransactionBtn").addEventListener("click", openModal);
-    $("#apiConnectionForm").addEventListener("submit", loadAccountsFromApi);
+    $("#loginForm").addEventListener("submit", loginToApi);
+    $("#refreshAccountsBtn").addEventListener("click", refreshAccountsFromApi);
+    $("#logoutBtn").addEventListener("click", logoutFromApi);
+    $("#createAccountForm").addEventListener("submit", createAccountFromApi);
     $$("[data-close-modal]").forEach(button => button.addEventListener("click", closeModal));
     $("#transactionModal").addEventListener("click", event => {
       if (event.target === $("#transactionModal")) closeModal();
