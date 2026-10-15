@@ -17,6 +17,9 @@ namespace Expense_management_app.Data
         public DbSet<ChuyenKhoan> ChuyenKhoans { get; set; }
             = null!;
 
+        public DbSet<NguoiDung> NguoiDungs { get; set; }
+            = null!;
+
         protected override void OnModelCreating(
             ModelBuilder modelBuilder)
         {
@@ -43,7 +46,7 @@ namespace Expense_management_app.Data
                     x.IdempotencyKey
                 })
                 .HasDatabaseName("uq_chuyenkhoan_user_key")
-                .IsUnique();
+                .IsUnique();                                                
         }
     }
 }

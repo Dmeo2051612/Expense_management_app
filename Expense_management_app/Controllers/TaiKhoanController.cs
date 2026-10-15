@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Expense_management_app.Contracts;
+using Expense_management_app.Entities;
 
 namespace Expense_management_app.Controllers
 {
@@ -66,7 +68,74 @@ namespace Expense_management_app.Controllers
 
             return Ok(accounts);
         }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateAccount(
+    [FromBody] TaoTaiKhoanRequest request,
+    CancellationToken cancellationToken)
+        {
+            string? userIdClaim =
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (!int.TryParse(userIdClaim, out int userId)
+                || userId <= 0)
+            {
+                return Unauthorized();
+            }
+
+            string tenTk = request.TenTk.Trim();
+            string loaiTk = request.LoaiTk.Trim();
+
+            if (string.IsNullOrWhiteSpace(tenTk)
+                || string.IsNullOrWhiteSpace(loaiTk))
+            {
+                return BadRequest(new
+                {
+                    message = "Tên và loại tài khoản không được để trống."
+                });
+            }
+
+            if (request.SoDuBanDau < 0
+                || request.SoDuBanDau > 9999999999999999.99m
+                || decimal.Round(request.SoDuBanDau, 2)
+                    != request.SoDuBanDau)
+            {
+                return BadRequest(new
+                {
+                    message = "Số dư ban đầu không hợp lệ."
+                });
+            }
+
+            var account = new TaiKhoan
+            {
+                UserId = userId,
+                TenTk = tenTk,
+                LoaiTk = loaiTk,
+                SoDuBanDau = request.SoDuBanDau,
+                SoDuHienTai = request.SoDuBanDau,
+                Version = 0,
+                DonViTienTe = "VND",
+                NgayTao = DateTime.UtcNow,
+                TrangThai = true
+            };
+
+            _dbContext.TaiKhoans.Add(account);
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return StatusCode(201, new TaiKhoanResponse
+            {
+                TkId = account.TkId,
+                TenTk = account.TenTk,
+                LoaiTk = account.LoaiTk,
+                SoDuHienTai = account.SoDuHienTai,
+                DonViTienTe = account.DonViTienTe,
+                NgayTao = account.NgayTao
+            });
+        }
     }
+
 
     public sealed class TaiKhoanResponse
     {
