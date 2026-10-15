@@ -3,16 +3,28 @@
   "WorkspaceRootPath": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|d:\\ute\\git\\project-quan-ly-chi-tieu\\expense_management_app\\entities\\chuyenkhoan.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|solutionrelative:entities\\chuyenkhoan.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|d:\\ute\\git\\project-quan-ly-chi-tieu\\expense_management_app\\contracts\\chuyentienrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|solutionrelative:contracts\\chuyentienrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|d:\\ute\\git\\project-quan-ly-chi-tieu\\expense_management_app\\interceptors\\taikhoanversioninterceptor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|solutionrelative:interceptors\\taikhoanversioninterceptor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|d:\\ute\\git\\project-quan-ly-chi-tieu\\expense_management_app\\controllers\\chuyenkhoancontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|solutionrelative:controllers\\chuyenkhoancontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|d:\\ute\\git\\project-quan-ly-chi-tieu\\expense_management_app\\services\\giaodichservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|solutionrelative:services\\giaodichservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|d:\\ute\\git\\project-quan-ly-chi-tieu\\expense_management_app\\data\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|solutionrelative:data\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|d:\\ute\\git\\project-quan-ly-chi-tieu\\expense_management_app\\services\\giaodichservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|solutionrelative:services\\giaodichservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|d:\\ute\\git\\project-quan-ly-chi-tieu\\expense_management_app\\entities\\chuyenkhoan.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|solutionrelative:entities\\chuyenkhoan.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{BAE9D500-85D4-4792-8D54-A3D1BD961A27}|Expense_management_app.csproj|d:\\ute\\git\\project-quan-ly-chi-tieu\\expense_management_app\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -26,8 +38,47 @@
       "DocumentGroups": [
         {
           "DockedWidth": 264,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 0,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "ChuyenTienRequest.cs",
+              "DocumentMoniker": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Contracts\\ChuyenTienRequest.cs",
+              "RelativeDocumentMoniker": "Contracts\\ChuyenTienRequest.cs",
+              "ToolTip": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Contracts\\ChuyenTienRequest.cs",
+              "RelativeToolTip": "Contracts\\ChuyenTienRequest.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAwwBAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-14T15:06:26.248Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "TaiKhoanVersionInterceptor.cs",
+              "DocumentMoniker": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Interceptors\\TaiKhoanVersionInterceptor.cs",
+              "RelativeDocumentMoniker": "Interceptors\\TaiKhoanVersionInterceptor.cs",
+              "ToolTip": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Interceptors\\TaiKhoanVersionInterceptor.cs",
+              "RelativeToolTip": "Interceptors\\TaiKhoanVersionInterceptor.cs",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAgwDEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-14T15:01:35.142Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "ChuyenKhoanController.cs",
+              "DocumentMoniker": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Controllers\\ChuyenKhoanController.cs",
+              "RelativeDocumentMoniker": "Controllers\\ChuyenKhoanController.cs",
+              "ToolTip": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Controllers\\ChuyenKhoanController.cs",
+              "RelativeToolTip": "Controllers\\ChuyenKhoanController.cs",
+              "ViewState": "AgIAADkAAAAAAAAAAAAwwGIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-14T14:52:49.667Z",
+              "EditorCaption": ""
+            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{eefa5220-e298-11d0-8f78-00a0c9110057}"
@@ -38,7 +89,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 6,
               "Title": "Program.cs",
               "DocumentMoniker": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
@@ -46,44 +97,43 @@
               "RelativeToolTip": "Program.cs",
               "ViewState": "AgIAAAMAAAAAAAAAAAAAAB0AAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-14T11:04:09.535Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-14T11:04:09.535Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 5,
               "Title": "ChuyenKhoan.cs",
               "DocumentMoniker": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Entities\\ChuyenKhoan.cs",
               "RelativeDocumentMoniker": "Entities\\ChuyenKhoan.cs",
               "ToolTip": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Entities\\ChuyenKhoan.cs",
               "RelativeToolTip": "Entities\\ChuyenKhoan.cs",
-              "ViewState": "AgIAAB8AAAAAAAAAAAAQwCQAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAYwCcAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-10-14T10:48:58.5Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "GiaoDichService.cs",
               "DocumentMoniker": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Services\\GiaoDichService.cs",
               "RelativeDocumentMoniker": "Services\\GiaoDichService.cs",
               "ToolTip": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Services\\GiaoDichService.cs",
               "RelativeToolTip": "Services\\GiaoDichService.cs",
-              "ViewState": "AgIAAH8AAAAAAAAAAAAcwIYAAAAtAAAAAAAAAA==",
+              "ViewState": "AgIAAAQBAAAAAAAAAAAswB0BAAA7AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-10-14T10:39:27.589Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 4,
               "Title": "AppDbContext.cs",
               "DocumentMoniker": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Data\\AppDbContext.cs",
               "RelativeDocumentMoniker": "Data\\AppDbContext.cs",
               "ToolTip": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Data\\AppDbContext.cs",
               "RelativeToolTip": "Data\\AppDbContext.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAAwAAAAAAAAAA==",
+              "ViewState": "AgIAACkAAAAAAAAAAAAcwC0AAAAcAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-10-14T10:26:02.913Z",
               "EditorCaption": ""
