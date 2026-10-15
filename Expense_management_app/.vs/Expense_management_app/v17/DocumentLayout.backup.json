@@ -38,8 +38,16 @@
       "DocumentGroups": [
         {
           "DockedWidth": 264,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 2,
           "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{eefa5220-e298-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{b1e99781-ab81-11d0-b683-00aa00a3ee26}"
+            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
@@ -48,7 +56,7 @@
               "RelativeDocumentMoniker": "Contracts\\ChuyenTienRequest.cs",
               "ToolTip": "D:\\UTE\\GIT\\project-quan-ly-chi-tieu\\Expense_management_app\\Contracts\\ChuyenTienRequest.cs",
               "RelativeToolTip": "Contracts\\ChuyenTienRequest.cs",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAwwBAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAA4AAAAAAAAAAAAIwBAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-10-14T15:06:26.248Z",
               "EditorCaption": ""
@@ -63,8 +71,7 @@
               "RelativeToolTip": "Interceptors\\TaiKhoanVersionInterceptor.cs",
               "ViewState": "AgIAAAwAAAAAAAAAAAAgwDEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-14T15:01:35.142Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-14T15:01:35.142Z"
             },
             {
               "$type": "Document",
@@ -76,16 +83,7 @@
               "RelativeToolTip": "Controllers\\ChuyenKhoanController.cs",
               "ViewState": "AgIAADkAAAAAAAAAAAAwwGIAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-14T14:52:49.667Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{eefa5220-e298-11d0-8f78-00a0c9110057}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{b1e99781-ab81-11d0-b683-00aa00a3ee26}"
+              "WhenOpened": "2026-10-14T14:52:49.667Z"
             },
             {
               "$type": "Document",
@@ -109,8 +107,7 @@
               "RelativeToolTip": "Entities\\ChuyenKhoan.cs",
               "ViewState": "AgIAAA8AAAAAAAAAAAAYwCcAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-14T10:48:58.5Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-14T10:48:58.5Z"
             },
             {
               "$type": "Document",
@@ -122,8 +119,7 @@
               "RelativeToolTip": "Services\\GiaoDichService.cs",
               "ViewState": "AgIAAAQBAAAAAAAAAAAswB0BAAA7AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-14T10:39:27.589Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-14T10:39:27.589Z"
             },
             {
               "$type": "Document",
@@ -135,8 +131,7 @@
               "RelativeToolTip": "Data\\AppDbContext.cs",
               "ViewState": "AgIAACkAAAAAAAAAAAAcwC0AAAAcAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-14T10:26:02.913Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-14T10:26:02.913Z"
             }
           ]
         }

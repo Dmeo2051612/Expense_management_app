@@ -14,7 +14,7 @@ namespace Expense_management_app.Contracts
 
         [Range(1, int.MaxValue)]
         public int TkDichId { get; set; }
-
+            
         [Range(typeof(decimal), "0.01", "9999999999999999.99")]    
         public decimal SoTien {  get; set; }
 
