@@ -348,3 +348,133 @@ td:first-child { padding-left: 11px; }
 .api-budget-empty { grid-column: 1 / -1; padding: 22px 12px; border: 1px dashed #dfe8e3; border-radius: 9px; color: #87949d; text-align: center; font-size: 11px; }
 #refreshBudgetsBtn:disabled, #createBudgetButton:disabled { opacity: .65; cursor: wait; }
 @media (max-width: 700px) { .api-budgets-panel { padding: 15px 12px; } .api-budget-form, .api-budget-list { grid-template-columns: 1fr; } .api-budgets-panel .panel-heading { align-items: flex-start; flex-direction: column; gap: 10px; } .api-budgets-panel #refreshBudgetsBtn { width: 100%; } }
+
+.daily-chart-card {
+  margin-top: 24px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e5ebef;
+  border-radius: 18px;
+  min-width: 0;
+}
+
+.daily-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.daily-chart-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.daily-chart-header p {
+  margin: 8px 0 0;
+  color: #84919e;
+  font-size: 13px;
+}
+
+#refreshDailyChartBtn {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #e5f5ef;
+  color: #168765;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#refreshDailyChartBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.daily-chart-legend {
+  display: flex;
+  gap: 20px;
+  margin: 22px 0 12px;
+  font-size: 13px;
+  color: #687787;
+}
+
+.daily-chart-legend span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.daily-chart-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.legend-income {
+  background: #209875;
+}
+
+.legend-expense {
+  background: #f19a78;
+}
+
+.daily-chart-plot {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-height: 220px;
+  overflow-x: auto;
+  padding: 16px 4px 4px;
+  border-bottom: 1px solid #e8edf0;
+}
+
+.daily-chart-day {
+  display: flex;
+  flex: 1 0 22px;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 22px;
+}
+
+.daily-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  height: 180px;
+}
+
+.daily-chart-bar {
+  width: 9px;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+}
+
+.daily-chart-bar.income {
+  background: #209875;
+}
+
+.daily-chart-bar.expense {
+  background: #f19a78;
+}
+
+.daily-chart-day-label {
+  min-height: 18px;
+  margin-top: 8px;
+  text-align: center;
+  font-size: 10px;
+  color: #84919e;
+}
+
+@media (max-width: 600px) {
+  .daily-chart-card {
+    padding: 16px;
+  }
+
+  .daily-chart-plot {
+    gap: 5px;
+  }
+}

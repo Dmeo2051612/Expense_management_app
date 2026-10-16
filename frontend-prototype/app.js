@@ -491,6 +491,7 @@
       renderTransactions();
       updateApiSummary();
       await refreshOverviewFromApi();
+      await refreshDailyChartFromApi();
 
       status.textContent =
         `Đã tải ${body.length} giao dịch thu/chi gần nhất từ API.`;
@@ -574,6 +575,130 @@ async function refreshOverviewFromApi() {
       subtitle.textContent =
         error.message || "Không thể tải thống kê tài chính.";
     }
+  }
+}
+
+async function refreshDailyChartFromApi() {
+  const plot = document.getElementById("dailyChartPlot");
+  const status = document.getElementById("dailyChartStatus");
+  const period = document.getElementById("dailyChartPeriod");
+  const button = document.getElementById("refreshDailyChartBtn");
+
+  if (!plot || !status || !activeApiToken) return;
+
+  if (button) button.disabled = true;
+
+  status.textContent = "Đang tải dữ liệu biểu đồ...";
+  status.className = "api-connection-status";
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/thong-ke/theo-ngay`,
+      {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+          "Authorization": `Bearer ${activeApiToken}`
+        },
+        cache: "no-store"
+      }
+    );
+
+    const body = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        `${response.status}: ${
+          body.detail || body.title || "Không thể tải biểu đồ."
+        }`
+      );
+    }
+
+    if (!Array.isArray(body)) {
+      throw new Error("API không trả về danh sách thống kê hợp lệ.");
+    }
+
+    const money = value =>
+      new Intl.NumberFormat("vi-VN", {
+        maximumFractionDigits: 0
+      }).format(Number(value) || 0) + " VND";
+
+    const maxValue = Math.max(
+      1,
+      ...body.map(item =>
+        Math.max(Number(item.tongThu) || 0, Number(item.tongChi) || 0)
+      )
+    );
+
+    const barHeight = value => {
+      const amount = Number(value) || 0;
+      return amount <= 0
+        ? 2
+        : Math.max(4, Math.round(amount / maxValue * 160));
+    };
+
+    const fragment = document.createDocumentFragment();
+
+    body.forEach((item, index) => {
+      const day = document.createElement("div");
+      day.className = "daily-chart-day";
+
+      const thu = Number(item.tongThu) || 0;
+      const chi = Number(item.tongChi) || 0;
+
+      day.title =
+        `${item.ngay} · Thu: ${money(thu)} · Chi: ${money(chi)}`;
+
+      const bars = document.createElement("div");
+      bars.className = "daily-chart-bars";
+
+      const incomeBar = document.createElement("span");
+      incomeBar.className = "daily-chart-bar income";
+      incomeBar.style.height = `${barHeight(thu)}px`;
+      incomeBar.setAttribute("aria-label", `Thu ${money(thu)}`);
+
+      const expenseBar = document.createElement("span");
+      expenseBar.className = "daily-chart-bar expense";
+      expenseBar.style.height = `${barHeight(chi)}px`;
+      expenseBar.setAttribute("aria-label", `Chi ${money(chi)}`);
+
+      bars.append(incomeBar, expenseBar);
+
+      const label = document.createElement("span");
+      label.className = "daily-chart-day-label";
+
+      const dayNumber = Number(item.ngay.slice(8, 10));
+      label.textContent =
+        index === 0 ||
+        index === body.length - 1 ||
+        dayNumber % 5 === 0 ||
+        thu > 0 ||
+        chi > 0
+          ? String(dayNumber)
+          : "";
+
+      day.append(bars, label);
+      fragment.appendChild(day);
+    });
+
+    plot.replaceChildren(fragment);
+
+    if (body.length > 0) {
+      period.textContent =
+        `${body[0].ngay} đến ${body[body.length - 1].ngay}`;
+    } else {
+      period.textContent = "Không có dữ liệu trong khoảng ngày.";
+    }
+
+    status.textContent = `Đã tải ${body.length} ngày từ API.`;
+    status.className = "api-connection-status is-success";
+  } catch (error) {
+    status.textContent =
+      error.message || "Không thể tải biểu đồ thu nhập và chi tiêu.";
+
+    status.className = "api-connection-status is-error";
+  } finally {
+    if (button) button.disabled = false;
   }
 }
 
@@ -1703,14 +1828,23 @@ try {
     });
 
     document.addEventListener("keydown", event => {
-      if (event.key === "Escape" && $("#transactionModal").classList.contains("is-open")) closeModal();
+      if (
+        event.key === "Escape" &&
+        $("#transactionModal").classList.contains("is-open")
+      ) {
+        closeModal();
+      }
     });
 
     initNavigation();
     updateSummary();
     renderTransactions();
     updateCashflowChart();
-  }
+
+    document
+      .getElementById("refreshDailyChartBtn")
+      ?.addEventListener("click", refreshDailyChartFromApi);
+      }
 
   document.addEventListener("DOMContentLoaded", init);
 })();
