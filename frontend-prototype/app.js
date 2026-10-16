@@ -490,7 +490,10 @@
       activeApiTransactions = body;
       renderTransactions();
       updateApiSummary();
-      status.textContent = `Đã tải ${body.length} giao dịch thu/chi gần nhất từ API.`;
+      await refreshOverviewFromApi();
+
+      status.textContent =
+        `Đã tải ${body.length} giao dịch thu/chi gần nhất từ API.`;
       status.className = "api-connection-status is-success";
       const subtitle = $("#transactionListSubtitle");
       if (subtitle) subtitle.textContent = "Lịch sử thu/chi thật của người dùng đang đăng nhập.";
@@ -503,21 +506,76 @@
   }
 
   function updateApiSummary() {
-    if (!activeApiToken) return;
-    const totalBalance = activeApiAccounts.reduce((sum, item) => sum + Number(item.soDuHienTai || 0), 0);
-    const now = new Date();
-    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const thisMonth = activeApiTransactions.filter(item => String(item.ngayGd || "").slice(0, 7) === monthKey);
-    const income = thisMonth.filter(item => String(item.loaiGd).toLowerCase() === "thu")
-      .reduce((sum, item) => sum + Number(item.soTien || 0), 0);
-    const expense = thisMonth.filter(item => String(item.loaiGd).toLowerCase() === "chi")
-      .reduce((sum, item) => sum + Number(item.soTien || 0), 0);
-    $("#balanceAmount").innerHTML = amountMarkup(totalBalance);
-    $("#incomeAmount").innerHTML = amountMarkup(income);
-    $("#expenseAmount").innerHTML = amountMarkup(expense);
-    const subtitle = $(".welcome-row .subtitle");
-    if (subtitle) subtitle.textContent = "Số dư lấy từ các ví thật; tổng thu/chi tháng này tính trên tối đa 50 giao dịch gần nhất do API trả về.";
+  if (!activeApiToken) return;
+
+  const totalBalance = activeApiAccounts.reduce(
+    (sum, item) => sum + Number(item.soDuHienTai || 0),
+    0
+  );
+
+  $("#balanceAmount").innerHTML = amountMarkup(totalBalance);
+}
+
+
+async function refreshOverviewFromApi() {
+  if (!activeApiToken) return;
+
+  const subtitle = $(".welcome-row .subtitle");
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/thong-ke/tong-quan`,
+      {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+          "Authorization": `Bearer ${activeApiToken}`
+        },
+        cache: "no-store"
+      }
+    );
+
+    const contentType = response.headers.get("content-type") || "";
+
+    const body = contentType.includes("application/json")
+      ? await response.json()
+      : await response.text();
+
+    if (!response.ok) {
+      const message = body && typeof body === "object"
+        ? (body.detail || body.title || body.message)
+        : null;
+
+      throw new Error(
+        `${response.status}: ${message || "Không thể tải thống kê."}`
+      );
+    }
+
+    if (!body || typeof body !== "object") {
+      throw new Error("API thống kê trả về dữ liệu không hợp lệ.");
+    }
+
+    $("#incomeAmount").innerHTML =
+      amountMarkup(Number(body.tongThu || 0));
+
+    $("#expenseAmount").innerHTML =
+      amountMarkup(Number(body.tongChi || 0));
+
+    if (subtitle) {
+      subtitle.textContent =
+        `Thống kê thực từ ${body.tuNgay} đến ${body.denNgay}` +
+        ` · ${Number(body.soGiaoDich || 0)} giao dịch thu/chi.`;
+    }
+  } catch (error) {
+    $("#incomeAmount").textContent = "—";
+    $("#expenseAmount").textContent = "—";
+
+    if (subtitle) {
+      subtitle.textContent =
+        error.message || "Không thể tải thống kê tài chính.";
+    }
   }
+}
 
   async function createCategoryFromApi(event) {
     event.preventDefault();
