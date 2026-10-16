@@ -492,6 +492,7 @@
       updateApiSummary();
       await refreshOverviewFromApi();
       await refreshDailyChartFromApi();
+      await updateCashflowChart();
 
       status.textContent =
         `Đã tải ${body.length} giao dịch thu/chi gần nhất từ API.`;
@@ -1055,35 +1056,222 @@ try {
     }
   }
 
-  function updateCashflowChart() {
-    const months = chartRanges[chartRangeIndex];
-    const labels = months === 3
-      ? ["T8", "T9", "T10"]
-      : months === 6
-        ? ["T5", "T6", "T7", "T8", "T9", "T10"]
-        : ["T11", "T12", "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"];
-    const incomeValues = months === 3
-      ? [88, 73, 92]
-      : months === 6
-        ? [68, 78, 61, 88, 73, 92]
-        : [54, 63, 74, 68, 72, 59, 68, 78, 61, 88, 73, 92];
-    const expenseValues = months === 3
-      ? [44, 37, 36]
-      : months === 6
-        ? [32, 39, 29, 44, 37, 36]
-        : [31, 36, 43, 27, 34, 29, 32, 39, 29, 44, 37, 36];
-    const groups = $(".bar-groups");
-    groups.style.gridTemplateColumns = `repeat(${months}, minmax(0, 1fr))`;
-    groups.innerHTML = labels.map((label, i) => `
-      <div class="bar-group ${i === labels.length - 1 ? "current" : ""}">
-        <div class="bar-pair">
-          <i class="bar income" style="height:${incomeValues[i]}%"></i>
-          <i class="bar expense" style="height:${expenseValues[i]}%"></i>
-        </div>
-        <span>${label}</span>
-      </div>`).join("");
-    $("#chartRangeButton").innerHTML = `${months} tháng gần đây <span>⌄</span>`;
+  async function updateCashflowChart() {
+  const months = chartRanges[chartRangeIndex];
+  const groups = document.querySelector(".bar-groups");
+  const yLabels = document.querySelector(".y-labels");
+  const button = document.getElementById("chartRangeButton");
+  const subtitle = document.querySelector("#reports .panel-heading p");
+
+  if (!groups || !yLabels) return;
+
+  if (!activeApiToken) {
+    groups.replaceChildren();
+    yLabels.innerHTML =
+      "<span>—</span><span>—</span><span>—</span><span>—</span><span>0</span>";
+    return;
   }
+
+  if (button) button.disabled = true;
+
+  const formatDate = date => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  const now = new Date();
+
+  const startDate = new Date(
+    now.getFullYear(),
+    now.getMonth() - months + 1,
+    1
+  );
+
+  const endDate = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+
+  const startText = formatDate(startDate);
+  const endText = formatDate(endDate);
+
+  if (button) {
+    button.innerHTML = `${months} tháng gần đây <span>⌄</span>`;
+  }
+
+  if (subtitle) {
+    subtitle.textContent = "Đang tải dữ liệu thu nhập và chi tiêu...";
+  }
+
+  try {
+    const query = new URLSearchParams({
+      tuNgay: startText,
+      denNgay: endText
+    });
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/thong-ke/theo-ngay?${query}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${activeApiToken}`
+        },
+        cache: "no-store"
+      }
+    );
+
+    const contentType = response.headers.get("content-type") || "";
+    const body = contentType.includes("application/json")
+      ? await response.json()
+      : await response.text();
+
+    if (!response.ok) {
+      const message =
+        body && typeof body === "object"
+          ? body.detail || body.title || body.message
+          : null;
+
+      throw new Error(
+        `${response.status}: ${message || "Không thể tải biểu đồ."}`
+      );
+    }
+
+    if (!Array.isArray(body)) {
+      throw new Error("API thống kê không trả về danh sách hợp lệ.");
+    }
+
+    // Khởi tạo đủ các tháng trong khoảng đã chọn.
+    const monthly = new Map();
+
+    for (let i = 0; i < months; i++) {
+      const date = new Date(
+        startDate.getFullYear(),
+        startDate.getMonth() + i,
+        1
+      );
+
+      const key =
+        `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
+      monthly.set(key, {
+        label: `T${date.getMonth() + 1}`,
+        income: 0,
+        expense: 0
+      });
+    }
+
+    // Cộng dữ liệu từng ngày thành tổng theo tháng.
+    for (const item of body) {
+      const key = item.ngay.slice(0, 7);
+      const month = monthly.get(key);
+
+      if (!month) continue;
+
+      month.income += Number(item.tongThu) || 0;
+      month.expense += Number(item.tongChi) || 0;
+    }
+
+    const values = [...monthly.values()];
+
+    const largestValue = Math.max(
+      0,
+      ...values.map(item => Math.max(item.income, item.expense))
+    );
+
+    // Tạo trục dọc phù hợp với số liệu thật.
+    const magnitude = largestValue > 0
+      ? Math.pow(10, Math.floor(Math.log10(largestValue)))
+      : 1;
+
+    const normalized = largestValue / magnitude;
+
+    const factor = normalized <= 1
+      ? 1
+      : normalized <= 2
+        ? 2
+        : normalized <= 5
+          ? 5
+          : 10;
+
+    const axisMax = factor * magnitude;
+
+    const formatAxis = value => {
+      if (value >= 1000000) {
+        return `${Number((value / 1000000).toFixed(1))} tr`;
+      }
+
+      if (value >= 1000) {
+        return `${Number((value / 1000).toFixed(1))}k`;
+      }
+
+      return String(Math.round(value));
+    };
+
+    yLabels.replaceChildren(
+      ...[1, 0.75, 0.5, 0.25, 0].map(ratio => {
+        const label = document.createElement("span");
+        label.textContent = formatAxis(axisMax * ratio);
+        return label;
+      })
+    );
+
+    const fragment = document.createDocumentFragment();
+
+    values.forEach((item, index) => {
+      const group = document.createElement("div");
+      group.className =
+        `bar-group${index === values.length - 1 ? " current" : ""}`;
+
+      group.title =
+        `${item.label} — Thu: ${item.income.toLocaleString("vi-VN")} VND; ` +
+        `Chi: ${item.expense.toLocaleString("vi-VN")} VND`;
+
+      const pair = document.createElement("div");
+      pair.className = "bar-pair";
+
+      const incomeBar = document.createElement("i");
+      incomeBar.className = "bar income";
+      incomeBar.style.height =
+        `${axisMax > 0 ? item.income / axisMax * 100 : 0}%`;
+
+      const expenseBar = document.createElement("i");
+      expenseBar.className = "bar expense";
+      expenseBar.style.height =
+        `${axisMax > 0 ? item.expense / axisMax * 100 : 0}%`;
+
+      pair.append(incomeBar, expenseBar);
+
+      const label = document.createElement("span");
+      label.textContent = item.label;
+
+      group.append(pair, label);
+      fragment.appendChild(group);
+    });
+
+    groups.replaceChildren(fragment);
+    groups.style.gridTemplateColumns =
+      `repeat(${months}, minmax(0, 1fr))`;
+
+    if (subtitle) {
+      subtitle.textContent =
+        `Dữ liệu thực từ ${startText} đến ${endText}`;
+    }
+  } catch (error) {
+    groups.replaceChildren();
+
+    if (subtitle) {
+      subtitle.textContent =
+        error.message || "Không thể tải dữ liệu thu nhập và chi tiêu.";
+    }
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
 
 
   const API_BASE_URL = "http://127.0.0.1:8081";
@@ -1815,7 +2003,6 @@ try {
     $("#chartRangeButton").addEventListener("click", () => {
       chartRangeIndex = (chartRangeIndex + 1) % chartRanges.length;
       updateCashflowChart();
-      showToast(`Đang hiển thị mô phỏng ${chartRanges[chartRangeIndex]} tháng.`);
     });
 
     $("#notificationButton").addEventListener("click", () => {
