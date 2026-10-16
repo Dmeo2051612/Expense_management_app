@@ -55,7 +55,9 @@
   let activeApiAccounts = [];
   let activeApiCategories = [];
   let activeApiTransactions = [];
+  let activeApiBudgets = [];
   let pendingTransferAttempt = null;
+  let pendingTransactionAttempt = null;
   const chartRanges = [3, 6, 12];
 
   const $ = (selector, parent = document) => parent.querySelector(selector);
@@ -254,6 +256,7 @@
       activeApiCategories = body;
       renderApiCategories(body);
       updateCategoryOptions();
+      updateBudgetCategoryOptions();
       status.textContent = `Đã tải ${body.length} danh mục của bạn.`;
       status.className = "api-connection-status is-success";
     } catch (error) {
@@ -266,6 +269,203 @@
         button.disabled = false;
         button.textContent = "Tải lại danh mục";
       }
+    }
+  }
+
+  function updateBudgetCategoryOptions() {
+    const select = $("#newBudgetCategory");
+    if (!select) return;
+    const previous = select.value;
+    const categories = activeApiCategories.filter(category =>
+      String(category.loaiGd || "").toLowerCase() === "chi"
+    );
+
+    if (!activeApiToken) {
+      select.innerHTML = '<option value="">Đăng nhập để tải danh mục</option>';
+      return;
+    }
+    if (categories.length === 0) {
+      select.innerHTML = '<option value="">Chưa có danh mục chi tiêu</option>';
+      return;
+    }
+
+    select.innerHTML = '<option value="">Chọn danh mục chi tiêu</option>' + categories
+      .map(category => `<option value="${Number(category.danhMucId)}">${escapeHtml(category.tenDanhMuc)}</option>`)
+      .join("");
+    if (categories.some(category => String(category.danhMucId) === previous)) {
+      select.value = previous;
+    }
+  }
+
+  function renderBudgets(budgets) {
+    const list = $("#apiBudgetList");
+    if (!list) return;
+    if (!Array.isArray(budgets) || budgets.length === 0) {
+      list.innerHTML = '<div class="api-budget-empty">Bạn chưa có ngân sách. Tạo ngân sách đầu tiên bằng biểu mẫu phía trên.</div>';
+      return;
+    }
+
+    list.innerHTML = budgets.map(budget => {
+      const limit = Number(budget.soTienGioiHan || 0);
+      const spent = Number(budget.soTienDaChi || 0);
+      const remaining = Number(budget.soTienConLai ?? (limit - spent));
+      const percent = limit > 0 ? Math.round(spent / limit * 100) : 0;
+      const width = Math.max(0, Math.min(percent, 100));
+      const exceeded = Boolean(budget.vuotNganSach) || spent > limit;
+      const start = dateLabel(budget.tuNgay);
+      const end = dateLabel(budget.denNgay);
+      return `<article class="api-budget-card">
+        <div class="api-budget-card-top">
+          <div><strong>${escapeHtml(budget.tenDanhMuc || `Danh mục #${Number(budget.danhMucId)}`)}</strong><span class="api-budget-period">${escapeHtml(start)} – ${escapeHtml(end)}</span></div>
+          <span class="api-budget-percent ${exceeded ? "is-over" : ""}">${percent}%</span>
+        </div>
+        <div class="api-budget-progress"><span class="${exceeded ? "is-over" : ""}" style="width:${width}%"></span></div>
+        <div class="api-budget-amounts"><span>Đã chi <strong>${escapeHtml(money(spent))}</strong></span><span>Giới hạn <strong>${escapeHtml(money(limit))}</strong></span></div>
+        <div class="api-budget-card-foot"><span>${exceeded ? `Vượt ngân sách ${escapeHtml(money(Math.max(0, -remaining)))}` : `Còn lại ${escapeHtml(money(remaining))}`}</span><span>Mã #${Number(budget.nganSachId)}</span></div>
+      </article>`;
+    }).join("");
+  }
+
+  async function refreshBudgetsFromApi() {
+    const panel = $("#apiBudgetsPanel");
+    const status = $("#budgetApiStatus");
+    const button = $("#refreshBudgetsBtn");
+    if (!activeApiToken || !panel || !status) return;
+
+    panel.hidden = false;
+    panel.removeAttribute("hidden");
+    const demoPanel = $("#demoBudgetsPanel");
+    if (demoPanel) demoPanel.hidden = true;
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Đang tải...";
+    }
+    status.textContent = "Đang tải ngân sách...";
+    status.className = "api-connection-status";
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/ngan-sach`, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+          "Authorization": `Bearer ${activeApiToken}`
+        },
+        cache: "no-store"
+      });
+      const body = (response.headers.get("content-type") || "").includes("application/json")
+        ? await response.json() : await response.text();
+      if (!response.ok) {
+        const message = body && typeof body === "object"
+          ? (body.detail || body.title || body.message) : null;
+        if (response.status === 401) {
+          activeApiToken = null;
+          activeApiUser = null;
+          activeApiAccounts = [];
+          activeApiCategories = [];
+          activeApiTransactions = [];
+          activeApiBudgets = [];
+          panel.hidden = true;
+          if (demoPanel) demoPanel.hidden = false;
+          $("#loginForm").hidden = false;
+          $("#apiSessionPanel").hidden = true;
+          throw new Error("401: Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+        }
+        throw new Error(`${response.status}: ${message || "Không thể tải ngân sách."}`);
+      }
+      if (!Array.isArray(body)) throw new Error("API ngân sách không trả về danh sách hợp lệ.");
+      activeApiBudgets = body;
+      renderBudgets(body);
+      updateBudgetCategoryOptions();
+      status.textContent = `Đã tải ${body.length} ngân sách của bạn.`;
+      status.className = "api-connection-status is-success";
+    } catch (error) {
+      status.textContent = error instanceof TypeError
+        ? "Không thể gọi API ngân sách. Kiểm tra Flask Gateway."
+        : (error.message || "Không thể tải ngân sách.");
+      status.className = "api-connection-status is-error";
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Tải lại ngân sách";
+      }
+    }
+  }
+
+  async function createBudgetFromApi(event) {
+    event.preventDefault();
+    const status = $("#budgetApiStatus");
+    const button = $("#createBudgetButton");
+    if (!activeApiToken) {
+      status.textContent = "Vui lòng đăng nhập trước.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    const danhMucId = Number($("#newBudgetCategory").value);
+    const amountText = $("#newBudgetLimit").value.trim();
+    const soTienGioiHan = Number(amountText);
+    const tuNgay = $("#newBudgetStart").value;
+    const denNgay = $("#newBudgetEnd").value;
+
+    if (!Number.isInteger(danhMucId) || danhMucId <= 0) {
+      status.textContent = "Hãy chọn một danh mục chi tiêu hợp lệ.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+    if (!/^\d+(?:\.\d{1,2})?$/.test(amountText) || !Number.isFinite(soTienGioiHan) || soTienGioiHan <= 0 || soTienGioiHan > 9999999999999999.99) {
+      status.textContent = "Giới hạn ngân sách phải lớn hơn 0 và có tối đa 2 chữ số thập phân.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+    if (!tuNgay || !denNgay || denNgay < tuNgay) {
+      status.textContent = "Ngày kết thúc phải từ ngày bắt đầu trở đi.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Đang tạo...";
+    status.textContent = "Đang tạo ngân sách...";
+    status.className = "api-connection-status";
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/ngan-sach`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${activeApiToken}`
+        },
+        body: JSON.stringify({ danhMucId, soTienGioiHan, tuNgay, denNgay }),
+        cache: "no-store"
+      });
+      const body = (response.headers.get("content-type") || "").includes("application/json")
+        ? await response.json() : await response.text();
+      if (!response.ok) {
+        const message = body && typeof body === "object"
+          ? (body.detail || body.title || body.message) : null;
+        throw new Error(`${response.status}: ${message || "Không thể tạo ngân sách."}`);
+      }
+
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const localDate = value => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+      $("#createBudgetForm").reset();
+      $("#newBudgetStart").value = localDate(new Date(year, month, 1));
+      $("#newBudgetEnd").value = localDate(new Date(year, month + 1, 0));
+      await refreshBudgetsFromApi();
+      status.textContent = `Đã tạo ngân sách cho “${body.tenDanhMuc || "danh mục chi tiêu"}” với giới hạn ${money(Number(body.soTienGioiHan || soTienGioiHan))}.`;
+      status.className = "api-connection-status is-success";
+      showToast("Đã tạo ngân sách mới.");
+    } catch (error) {
+      status.textContent = error instanceof TypeError
+        ? "Không thể gọi API ngân sách. Kiểm tra Flask Gateway."
+        : (error.message || "Không thể tạo ngân sách.");
+      status.className = "api-connection-status is-error";
+    } finally {
+      button.disabled = false;
+      button.textContent = "Tạo ngân sách";
     }
   }
 
@@ -599,6 +799,30 @@
     const ngayGd = date ? new Date(`${date}T12:00:00`).toISOString() : null;
     const payload = { tkId, danhMucId, loaiGd: kind, soTien, ngayGd, moTa: moTa || null };
     button.disabled = true;
+    const signature = JSON.stringify(payload);
+let idempotencyKey;
+
+try {
+  if (
+    pendingTransactionAttempt &&
+    pendingTransactionAttempt.signature === signature
+  ) {
+    idempotencyKey = pendingTransactionAttempt.key;
+  } else {
+    idempotencyKey = createIdempotencyKey();
+
+    pendingTransactionAttempt = {
+      signature,
+      key: idempotencyKey
+    };
+  }
+} catch (error) {
+  status.textContent =
+    error.message || "Không thể tạo mã yêu cầu giao dịch.";
+
+  status.className = "api-connection-status is-error";
+  return;
+}
     button.textContent = "Đang lưu...";
     status.textContent = "Đang lưu giao dịch và cập nhật số dư...";
     status.className = "api-connection-status";
@@ -609,7 +833,8 @@
         headers: {
           "Accept": "application/json",
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${activeApiToken}`
+          "Authorization": `Bearer ${activeApiToken}`,
+          "Idempotency-Key": idempotencyKey
         },
         body: JSON.stringify(payload),
         cache: "no-store"
@@ -627,6 +852,7 @@
         throw new Error(`${response.status}: ${message || "Không thể lưu giao dịch."}`);
       }
 
+      pendingTransactionAttempt = null;
       const transactionId = body && typeof body === "object" ? body.giaoDichId : null;
       status.textContent = `Đã ghi nhận ${kind === "thu" ? "thu nhập" : "chi tiêu"}${transactionId != null ? ` (mã #${transactionId})` : ""}. Đang làm mới dữ liệu...`;
       status.className = "api-connection-status is-success";
@@ -922,6 +1148,9 @@
           $("#apiTransferPanel").hidden = true;
           $("#transferHistoryPanel").hidden = true;
           $("#categories").hidden = true;
+          $("#apiBudgetsPanel").hidden = true;
+          $("#demoBudgetsPanel").hidden = false;
+          activeApiBudgets = [];
           activeApiCategories = [];
           activeApiTransactions = [];
           message = "401: Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.";
@@ -954,7 +1183,8 @@
       await Promise.all([
         refreshTransferHistory(),
         refreshCategoriesFromApi(),
-        refreshTransactionsFromApi()
+        refreshTransactionsFromApi(),
+        refreshBudgetsFromApi()
       ]);
     } catch (error) {
       status.textContent = error instanceof TypeError
@@ -973,6 +1203,7 @@
     activeApiAccounts = [];
     activeApiCategories = [];
     activeApiTransactions = [];
+    activeApiBudgets = [];
     pendingTransferAttempt = null;
     $("#loginPassword").value = "";
     $("#loginForm").hidden = false;
@@ -981,6 +1212,11 @@
     $("#apiTransferPanel").hidden = true;
     $("#transferHistoryPanel").hidden = true;
     $("#categories").hidden = true;
+    $("#apiBudgetsPanel").hidden = true;
+    $("#demoBudgetsPanel").hidden = false;
+    $("#apiBudgetList").innerHTML = '<div class="api-budget-empty">Đăng nhập để tải ngân sách của bạn.</div>';
+    $("#budgetApiStatus").textContent = "Đăng nhập để quản lý ngân sách.";
+    $("#budgetApiStatus").className = "api-connection-status";
     $("#apiCategoryList").innerHTML = "";
     $("#transactionRows").innerHTML = "";
     $("#transactionListStatus").textContent = "Đang hiển thị giao dịch minh họa. Đăng nhập để tải dữ liệu thật.";
@@ -1069,6 +1305,9 @@
           $("#apiTransferPanel").hidden = true;
           $("#transferHistoryPanel").hidden = true;
           $("#categories").hidden = true;
+          $("#apiBudgetsPanel").hidden = true;
+          $("#demoBudgetsPanel").hidden = false;
+          activeApiBudgets = [];
           $("#apiConnectionStatus").textContent = message;
           $("#apiConnectionStatus").className = "api-connection-status is-error";
         } else if (response.status === 403) {
@@ -1115,7 +1354,8 @@
       await Promise.all([
         refreshTransferHistory(),
         refreshCategoriesFromApi(),
-        refreshTransactionsFromApi()
+        refreshTransactionsFromApi(),
+        refreshBudgetsFromApi()
       ]);
       showToast("Đã tạo tài khoản và tải lại danh sách từ API.");
     } catch (error) {
@@ -1319,6 +1559,11 @@
           showToast("Đăng nhập để quản lý danh mục.");
           return;
         }
+        if (targetId === "apiBudgetsPanel" && target.hidden) {
+          event.preventDefault();
+          showToast("Đăng nhập để quản lý ngân sách.");
+          return;
+        }
         $$(".nav-item").forEach(item => item.classList.remove("active"));
         link.classList.add("active");
       });
@@ -1331,6 +1576,9 @@
       weekday: "long", day: "numeric", month: "long", year: "numeric"
     }).format(today).toLocaleUpperCase("vi");
     $("#transactionDate").value = today.toLocaleDateString("en-CA");
+    const localDate = value => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+    $("#newBudgetStart").value = localDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    $("#newBudgetEnd").value = localDate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
 
     $("#addTransactionBtn").addEventListener("click", openModal);
     $("#loginForm").addEventListener("submit", loginToApi);
@@ -1347,6 +1595,8 @@
     $("#transactionForm").addEventListener("submit", addTransaction);
     $("#createCategoryForm").addEventListener("submit", createCategoryFromApi);
     $("#refreshCategoriesBtn").addEventListener("click", refreshCategoriesFromApi);
+    $("#createBudgetForm").addEventListener("submit", createBudgetFromApi);
+    $("#refreshBudgetsBtn").addEventListener("click", refreshBudgetsFromApi);
     $("#openCategoriesBtn").addEventListener("click", () => {
       closeModal();
       const panel = $("#categories");

@@ -21,7 +21,7 @@
         <a class="nav-item" href="#accounts"><span class="nav-icon">▣</span><span>Tài khoản</span></a>
         <a class="nav-item" href="#apiTransferPanel"><span class="nav-icon">⇄</span><span>Chuyển tiền</span></a>
         <a class="nav-item" href="#transferHistoryPanel"><span class="nav-icon">↶</span><span>Lịch sử chuyển tiền</span></a>
-        <a class="nav-item" href="#budgets"><span class="nav-icon">◎</span><span>Ngân sách</span></a>
+        <a class="nav-item" href="#apiBudgetsPanel"><span class="nav-icon">◎</span><span>Ngân sách</span></a>
         <a class="nav-item" href="#reports"><span class="nav-icon">▥</span><span>Báo cáo</span></a>
       </nav>
 
@@ -112,7 +112,7 @@
           </div>
         </article>
 
-        <article class="panel budget-panel" id="budgets">
+        <article class="panel budget-panel" id="demoBudgetsPanel">
           <div class="panel-heading">
             <div><h2>Ngân sách tháng 10</h2><p>Tiến độ chi tiêu của bạn</p></div>
             <button class="more-button" aria-label="Tùy chọn">•••</button>
@@ -302,7 +302,35 @@
         </form>
       </section>
 
-      <footer class="page-footer"><span>© 2026 Finora. Quản lý tài chính theo cách của bạn.</span><span>Số liệu tổng quan và ngân sách demo có thể chưa được đồng bộ đầy đủ với API.</span></footer>
+      <section class="panel api-budgets-panel" id="apiBudgetsPanel" hidden>
+        <div class="panel-heading">
+          <div><h2>Ngân sách của bạn</h2><p>Ngân sách được lưu trong MySQL và tính từ giao dịch chi tiêu thực tế.</p></div>
+          <button class="api-secondary-button" id="refreshBudgetsBtn" type="button">Tải lại ngân sách</button>
+        </div>
+        <p class="api-connection-status" id="budgetApiStatus" role="status" aria-live="polite">Đăng nhập để quản lý ngân sách.</p>
+        <form class="api-budget-form" id="createBudgetForm">
+          <label for="newBudgetCategory">Danh mục chi tiêu
+            <select id="newBudgetCategory" name="danhMucId" required>
+              <option value="">Đăng nhập để tải danh mục</option>
+            </select>
+          </label>
+          <label for="newBudgetLimit">Giới hạn ngân sách (VND)
+            <input id="newBudgetLimit" name="soTienGioiHan" type="number" min="0.01" max="9999999999999999.99" step="0.01" placeholder="Ví dụ: 500000" required />
+          </label>
+          <label for="newBudgetStart">Từ ngày
+            <input id="newBudgetStart" name="tuNgay" type="date" required />
+          </label>
+          <label for="newBudgetEnd">Đến ngày
+            <input id="newBudgetEnd" name="denNgay" type="date" required />
+          </label>
+          <button class="primary-button api-create-button" id="createBudgetButton" type="submit">Tạo ngân sách</button>
+        </form>
+        <div class="api-budget-list" id="apiBudgetList">
+          <div class="api-budget-empty">Đăng nhập để tải ngân sách của bạn.</div>
+        </div>
+      </section>
+
+      <footer class="page-footer"><span>© 2026 Finora. Quản lý tài chính theo cách của bạn.</span><span>Số liệu tổng quan và biểu đồ demo có thể chưa được đồng bộ đầy đủ với API.</span></footer>
     </main>
   </div>
 

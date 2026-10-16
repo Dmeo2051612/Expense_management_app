@@ -1,4 +1,8 @@
 ﻿using System;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Expense_management_app.Data;
@@ -30,11 +34,16 @@ namespace Expense_management_app.Services
             decimal soTien,
             DateTime? ngayGd,
             string? moTa,
+            Guid idempotencyKey,
             CancellationToken cancellationToken = default)
         {
             if (userId <= 0)
                 throw new ArgumentException(
                     "Người dùng không hợp lệ.");
+
+            if (idempotencyKey == Guid.Empty)
+                throw new ArgumentException(
+                    "Idempotency-Key không hợp lệ.");
 
             if (tkId <= 0 || danhMucId <= 0)
                 throw new ArgumentException(
@@ -61,8 +70,34 @@ namespace Expense_management_app.Services
                 throw new ArgumentException(
                     "Mô tả không được vượt quá 250 ký tự.");
 
+            string key = idempotencyKey.ToString("D");
+
+            string requestHash = TaoRequestHash(
+                userId,
+                tkId,
+                danhMucId,
+                loaiGd,
+                soTien,
+                ngayGd,
+                moTa);
+
+            // Nếu đã xử lý request này, trả lại kết quả cũ.
+            var existingBeforeTransaction =
+                await TimGiaoDichAsync(
+                    userId, key, cancellationToken);
+
+            if (existingBeforeTransaction != null)
+            {
+                return LayKetQuaCu(
+                    existingBeforeTransaction,
+                    requestHash,
+                    userId,
+                    idempotencyKey);
+            }
+
             DateTime now = DateTime.UtcNow;
-            DateTime ngayGiaoDich = ngayGd?.ToUniversalTime() ?? now;
+            DateTime ngayGiaoDich =
+                ngayGd?.ToUniversalTime() ?? now;
 
             await using var transaction =
                 await _dbContext.Database.BeginTransactionAsync(
@@ -114,7 +149,8 @@ namespace Expense_management_app.Services
                 }
                 else
                 {
-                    decimal maxBalance = 9999999999999999.99m;
+                    const decimal maxBalance =
+                        9999999999999999.99m;
 
                     if (account.SoDuHienTai > maxBalance - soTien)
                         throw new InvalidOperationException(
@@ -133,7 +169,9 @@ namespace Expense_management_app.Services
                     NgayGd = ngayGiaoDich,
                     NgayTao = now,
                     MoTa = moTa,
-                    GiaoDichGocId = null
+                    GiaoDichGocId = null,
+                    IdempotencyKey = key,
+                    RequestHash = requestHash
                 };
 
                 _dbContext.GiaoDichs.Add(giaoDich);
@@ -141,17 +179,13 @@ namespace Expense_management_app.Services
                 await _dbContext.SaveChangesAsync(
                     cancellationToken);
 
-                await transaction.CommitAsync(
-                    cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
 
                 _logger.LogInformation(
                     "Ghi nhận giao dịch thành công. " +
-                    "UserId={UserId}, GiaoDichId={GiaoDichId}, " +
-                    "LoaiGd={LoaiGd}, SoTien={SoTien}",
+                    "UserId={UserId}, GiaoDichId={GiaoDichId}",
                     userId,
-                    giaoDich.GiaoDichId,
-                    loaiGd,
-                    soTien);
+                    giaoDich.GiaoDichId);
 
                 return giaoDich.GiaoDichId;
             }
@@ -161,6 +195,19 @@ namespace Expense_management_app.Services
                     CancellationToken.None);
 
                 _dbContext.ChangeTracker.Clear();
+
+                var existingAfterConcurrency =
+                    await TimGiaoDichAsync(
+                        userId, key, cancellationToken);
+
+                if (existingAfterConcurrency != null)
+                {
+                    return LayKetQuaCu(
+                        existingAfterConcurrency,
+                        requestHash,
+                        userId,
+                        idempotencyKey);
+                }
 
                 _logger.LogWarning(
                     ex,
@@ -181,6 +228,19 @@ namespace Expense_management_app.Services
 
                 _dbContext.ChangeTracker.Clear();
 
+                var existingAfterDbError =
+                    await TimGiaoDichAsync(
+                        userId, key, cancellationToken);
+
+                if (existingAfterDbError != null)
+                {
+                    return LayKetQuaCu(
+                        existingAfterDbError,
+                        requestHash,
+                        userId,
+                        idempotencyKey);
+                }
+
                 _logger.LogError(
                     ex,
                     "Lỗi database khi ghi nhận thu chi. " +
@@ -199,6 +259,77 @@ namespace Expense_management_app.Services
 
                 throw;
             }
+        }
+
+        private Task<GiaoDich?> TimGiaoDichAsync(
+            int userId,
+            string key,
+            CancellationToken cancellationToken)
+        {
+            return _dbContext.GiaoDichs
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    x => x.UserId == userId
+                         && x.IdempotencyKey == key,
+                    cancellationToken);
+        }
+
+        private int LayKetQuaCu(
+            GiaoDich existing,
+            string requestHash,
+            int userId,
+            Guid idempotencyKey)
+        {
+            if (!string.Equals(
+                existing.RequestHash,
+                requestHash,
+                StringComparison.Ordinal))
+            {
+                _logger.LogWarning(
+                    "Idempotency-Key được sử dụng với payload khác. " +
+                    "UserId={UserId}, GiaoDichId={GiaoDichId}",
+                    userId,
+                    existing.GiaoDichId);
+
+                throw new IdempotencyConflictException(
+                    "Idempotency-Key đã được sử dụng cho một yêu cầu khác.");
+            }
+
+            _logger.LogInformation(
+                "Trả lại kết quả giao dịch cũ. " +
+                "UserId={UserId}, GiaoDichId={GiaoDichId}",
+                userId,
+                existing.GiaoDichId);
+
+            return existing.GiaoDichId;
+        }
+
+        private static string TaoRequestHash(
+            int userId,
+            int tkId,
+            int danhMucId,
+            string loaiGd,
+            decimal soTien,
+            DateTime? ngayGd,
+            string? moTa)
+        {
+            string canonical = JsonSerializer.Serialize(new
+            {
+                userId,
+                tkId,
+                danhMucId,
+                loaiGd,
+                soTien = soTien.ToString(
+                    "F2", CultureInfo.InvariantCulture),
+                ngayGd = ngayGd?.ToString(
+                    "O", CultureInfo.InvariantCulture),
+                moTa = moTa ?? string.Empty
+            });
+
+            byte[] bytes = SHA256.HashData(
+                Encoding.UTF8.GetBytes(canonical));
+
+            return Convert.ToHexString(bytes).ToLowerInvariant();
         }
     }
 }

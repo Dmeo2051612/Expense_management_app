@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Expense_management_app.Data;
+using Expense_management_app.Services;
 
 
 namespace Expense_management_app.Controllers
@@ -93,6 +94,8 @@ namespace Expense_management_app.Controllers
 
         [HttpPost]
         public async Task<IActionResult> CreateTransaction(
+            [FromHeader(Name = "Idempotency-Key")]
+            string? idempotencyKey,
             [FromBody] TaoGiaoDichRequest request,
             CancellationToken cancellationToken)
         {
@@ -102,6 +105,16 @@ namespace Expense_management_app.Controllers
 
             if (!int.TryParse(claim, out int userId) || userId <= 0)
                 return Unauthorized();
+            
+            if (!Guid.TryParse(idempotencyKey, out Guid key)
+                 || key == Guid.Empty)
+            {
+                ModelState.AddModelError(
+                    "Idempotency-Key",
+                    "Header Idempotency-Key phải là GUID hợp lệ.");
+
+                return ValidationProblem(ModelState);
+            }
 
             try
             {
@@ -113,6 +126,7 @@ namespace Expense_management_app.Controllers
                     request.SoTien,
                     request.NgayGd,
                     request.MoTa,
+                    key,
                     cancellationToken);
 
                 return StatusCode(StatusCodes.Status201Created, new
@@ -131,6 +145,13 @@ namespace Expense_management_app.Controllers
             {
                 return Problem(
                     title: "Transaction rejected",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status409Conflict);
+            }
+            catch (IdempotencyConflictException ex)
+            {
+                return Problem(
+                    title: "Idempotency key conflict",
                     detail: ex.Message,
                     statusCode: StatusCodes.Status409Conflict);
             }

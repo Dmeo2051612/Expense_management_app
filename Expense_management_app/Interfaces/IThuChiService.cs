@@ -14,6 +14,7 @@ namespace Expense_management_app.Interfaces
             decimal soTien,
             DateTime? ngayGd,
             string? moTa,
+            Guid idempotencyKey,
             CancellationToken cancellationToken = default);
     }
 }

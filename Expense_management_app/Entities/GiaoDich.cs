@@ -38,5 +38,11 @@ namespace Expense_management_app.Entities
 
         [Column("giaodich_goc_id")]
         public int? GiaoDichGocId { get; set; }
+
+        [Column("idempotency_key")]
+        public string? IdempotencyKey { get; set; }
+
+        [Column("request_hash")]
+        public string? RequestHash { get; set; }
     }
 }

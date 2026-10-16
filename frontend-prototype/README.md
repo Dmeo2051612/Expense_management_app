@@ -50,3 +50,8 @@ Sau khi đăng nhập, giao diện dùng các endpoint C# qua Flask Gateway:
 Nút “Thêm giao dịch” cần phiên đăng nhập. Danh mục và tài khoản được tải từ API, không dùng danh mục/tài khoản mẫu để gửi giao dịch thật. Lịch sử thu/chi được hiển thị trong bảng “Giao dịch gần đây”.
 
 Lưu ý: API thu/chi hiện chưa có idempotency key ở phía backend. Nếu trình duyệt mất kết nối sau khi gửi POST, hãy tải lại lịch sử để xác nhận giao dịch đã được lưu trước khi gửi lại. Số liệu ngân sách và biểu đồ hiện vẫn là minh họa; thẻ tổng số dư lấy từ tài khoản API, còn tổng thu/chi tháng lấy từ các giao dịch được API trả về (tối đa 50).
+
+
+## Ngân sách qua API
+
+Sau khi đăng nhập, Finora tải ngân sách bằng `GET /api/ngan-sach` và tạo ngân sách bằng `POST /api/ngan-sach`. Form chỉ cho chọn danh mục chi tiêu của người dùng hiện tại, kèm giới hạn và khoảng ngày. Danh sách hiển thị số tiền đã chi, số tiền còn lại và trạng thái vượt giới hạn do backend tính toán. Sau khi ghi nhận giao dịch thu/chi hoặc tạo ngân sách, frontend tải lại dữ liệu tương ứng từ API.
