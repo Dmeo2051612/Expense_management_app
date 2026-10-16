@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
+using Expense_management_app.Data;
 
 namespace Expense_management_app.Controllers
 {
@@ -18,11 +19,78 @@ namespace Expense_management_app.Controllers
     public class ChuyenKhoanController : ControllerBase
     {
         private readonly IGiaoDichService _giaoDichService;
+        private readonly AppDbContext _dbContext;
 
         public ChuyenKhoanController(
-            IGiaoDichService giaoDichService)
+            IGiaoDichService giaoDichService,
+            AppDbContext dbContext)
         {
             _giaoDichService = giaoDichService;
+            _dbContext = dbContext;
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetHistory(
+    CancellationToken cancellationToken)
+        {
+            string? claim = User.FindFirst(
+                ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (!int.TryParse(claim, out int userId) || userId <= 0)
+                return Unauthorized();
+
+            var history = await (
+                from transfer in _dbContext.ChuyenKhoans.AsNoTracking()
+
+                join source in _dbContext.TaiKhoans.AsNoTracking()
+                    on new
+                    {
+                        TkId = transfer.TkNguonId,
+                        transfer.UserId
+                    }
+                    equals new
+                    {
+                        TkId = source.TkId,
+                        source.UserId
+                    }
+
+                join destination in _dbContext.TaiKhoans.AsNoTracking()
+                    on new
+                    {
+                        TkId = transfer.TkDichId,
+                        transfer.UserId
+                    }
+                    equals new
+                    {
+                        TkId = destination.TkId,
+                        destination.UserId
+                    }
+
+                where transfer.UserId == userId
+
+                orderby transfer.NgayTao descending,
+                        transfer.ChuyenKhoanId descending
+
+                select new ChuyenKhoanHistoryResponse
+                {
+                    ChuyenKhoanId = transfer.ChuyenKhoanId,
+
+                    TkNguonId = transfer.TkNguonId,
+                    TenTkNguon = source.TenTk,
+
+                    TkDichId = transfer.TkDichId,
+                    TenTkDich = destination.TenTk,
+
+                    SoTien = transfer.SoTien,
+                    NgayTao = transfer.NgayTao,
+                    MoTa = transfer.MoTa
+                })
+                .Take(50)
+                .ToListAsync(cancellationToken);
+
+            return Ok(history);
         }
 
         [HttpPost]

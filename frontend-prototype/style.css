@@ -266,3 +266,57 @@ td:first-child { padding-left: 11px; }
 .api-secondary-button:hover { border-color: #239b77; color: #167657; }
 .api-secondary-button:disabled { opacity: .65; cursor: wait; }
 @media (max-width: 620px) { .api-session-row { align-items: stretch; flex-direction: column; } .api-session-actions { display: grid; grid-template-columns: 1fr 1fr; } .api-secondary-button { justify-content: center; } }
+
+/* API-backed transfer form */
+.api-transfer-panel { margin-top: 17px; padding: 20px; }
+.api-transfer-panel[hidden], .api-create-account-panel[hidden], .api-session-panel[hidden], .api-accounts-container[hidden], #demoAccountsContainer[hidden] { display: none !important; }
+.api-transfer-form { margin-top: 16px; }
+.api-transfer-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.api-transfer-fields label { display: grid; gap: 7px; color: #52616a; font-size: 10px; font-weight: 700; }
+.api-transfer-fields input, .api-transfer-fields select { width: 100%; min-width: 0; border: 1px solid #dfe8e3; border-radius: 8px; padding: 11px 12px; color: #344650; background: #fff; font: inherit; font-size: 11px; outline: none; }
+.api-transfer-fields input:focus, .api-transfer-fields select:focus { border-color: #239b77; box-shadow: 0 0 0 3px #239b7718; }
+.api-transfer-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.api-transfer-button { justify-content: center; min-width: 160px; }
+.api-transfer-button:disabled { opacity: .55; cursor: not-allowed; }
+.api-transfer-hint { flex: 1; color: #87949d; font-size: 10px; line-height: 1.6; }
+@media (max-width: 620px) { .api-transfer-panel { padding: 15px 12px; } .api-transfer-fields { grid-template-columns: 1fr; gap: 12px; } .api-transfer-actions { align-items: stretch; flex-direction: column; } .api-transfer-button { width: 100%; } }
+
+
+
+/* API-backed transfer history */
+.api-history-panel { margin-top: 17px; padding: 20px; }
+.api-history-panel[hidden] { display: none !important; }
+.api-history-panel .panel-heading { align-items: center; }
+.api-history-table-wrap { margin-top: 12px; width: 100%; overflow-x: auto; border: 1px solid #edf1ef; border-radius: 9px; }
+.api-history-table { width: 100%; min-width: 760px; border-collapse: collapse; background: #fff; }
+.api-history-table th { padding: 12px 13px; text-align: left; color: #84929a; background: #f8fbf9; font-size: 8px; font-weight: 800; letter-spacing: .6px; white-space: nowrap; }
+.api-history-table td { padding: 12px 13px; border-top: 1px solid #edf1ef; color: #43534d; font-size: 10px; vertical-align: top; }
+.api-history-table td:first-child { color: #718078; font-weight: 700; white-space: nowrap; }
+.api-history-table .history-account-id { display: block; margin-top: 4px; color: #91a098; font-size: 9px; }
+.api-history-table .amount-out { color: #bd5757; font-weight: 800; white-space: nowrap; }
+.api-history-table .empty-row { padding: 22px 12px; text-align: center; color: #87949d; }
+@media (max-width: 620px) { .api-history-panel { padding: 15px 12px; } .api-history-panel .panel-heading { align-items: flex-start; flex-direction: column; gap: 10px; } .api-history-panel .api-secondary-button { width: 100%; } }
+
+
+/* API-backed income/expense and category management */
+.api-categories-panel { margin-top: 17px; padding: 20px; }
+.api-categories-panel[hidden] { display: none !important; }
+.api-category-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0 16px; }
+.api-category-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid #e8efeb; border-radius: 9px; padding: 11px 12px; background: #fff; }
+.api-category-name { color: #344650; font-size: 11px; font-weight: 700; overflow-wrap: anywhere; }
+.api-category-meta { color: #87949d; font-size: 9px; margin-top: 4px; }
+.api-category-kind { border-radius: 999px; padding: 5px 8px; font-size: 9px; font-weight: 800; white-space: nowrap; }
+.api-category-kind.income { color: #177a5e; background: #e7f7f0; }
+.api-category-kind.expense { color: #ae5555; background: #fff0ed; }
+.api-category-empty { grid-column: 1 / -1; color: #87949d; font-size: 11px; text-align: center; border: 1px dashed #dfe8e3; border-radius: 9px; padding: 18px 12px; }
+.api-category-form { display: grid; grid-template-columns: 2fr 1fr auto; align-items: end; gap: 12px; padding-top: 14px; border-top: 1px solid #edf1ef; }
+.api-category-form label { display: grid; gap: 7px; color: #52616a; font-size: 10px; font-weight: 700; }
+.api-category-form input, .api-category-form select { min-width: 0; width: 100%; border: 1px solid #dfe8e3; border-radius: 8px; padding: 11px 12px; color: #344650; background: #fff; font: inherit; font-size: 11px; outline: none; }
+.api-category-form input:focus, .api-category-form select:focus { border-color: #239b77; box-shadow: 0 0 0 3px #239b7718; }
+.api-category-form .api-create-button { width: auto; white-space: nowrap; }
+#transactionListStatus { margin-top: 8px; }
+#transactionApiStatus { margin: 8px 0 0; }
+#transactionForm .demo-notice { margin: 14px 0 0; }
+#transactionForm .modal-actions { flex-wrap: wrap; }
+#saveTransactionButton:disabled, #createCategoryButton:disabled { opacity: .65; cursor: wait; }
+@media (max-width: 700px) { .api-category-list { grid-template-columns: 1fr; } .api-category-form { grid-template-columns: 1fr; } .api-category-form .api-create-button { width: 100%; } }

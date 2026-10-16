@@ -90,6 +90,7 @@ builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
 });
 
 builder.Services.AddScoped<IGiaoDichService, GiaoDichService>();
+builder.Services.AddScoped<IThuChiService, ThuChiService>();
 
 builder.Services.AddProblemDetails();
 

@@ -20,6 +20,12 @@ namespace Expense_management_app.Data
         public DbSet<NguoiDung> NguoiDungs { get; set; }
             = null!;
 
+        public DbSet<DanhMuc> DanhMucs { get; set; } = null!;
+
+        public DbSet<GiaoDich> GiaoDichs { get; set; } = null!;
+
+        public DbSet<NganSach> NganSachs { get; set; } = null!;
+
         protected override void OnModelCreating(
             ModelBuilder modelBuilder)
         {

@@ -52,6 +52,10 @@
   let chartRangeIndex = 1;
   let activeApiToken = null;
   let activeApiUser = null;
+  let activeApiAccounts = [];
+  let activeApiCategories = [];
+  let activeApiTransactions = [];
+  let pendingTransferAttempt = null;
   const chartRanges = [3, 6, 12];
 
   const $ = (selector, parent = document) => parent.querySelector(selector);
@@ -94,12 +98,286 @@
   }
 
   function dateLabel(isoDate) {
-    const date = new Date(`${isoDate}T12:00:00`);
-    return Number.isNaN(date.getTime()) ? escapeHtml(isoDate) : dateFormatter.format(date);
+    if (!isoDate) return "—";
+    const raw = String(isoDate);
+    const date = new Date(raw.includes("T") ? raw : `${raw}T12:00:00`);
+    return Number.isNaN(date.getTime()) ? escapeHtml(raw) : dateFormatter.format(date);
+  }
+
+  const historyDateFormatter = new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit"
+  });
+
+  function dateTimeLabel(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? String(value) : historyDateFormatter.format(date);
+  }
+
+  function renderTransferHistory(transactions) {
+    const tbody = $("#transferHistoryRows");
+    const status = $("#transferHistoryStatus");
+    if (!tbody || !status) return;
+
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-row">Chưa có giao dịch chuyển tiền.</td></tr>';
+      status.textContent = "Chưa có giao dịch chuyển tiền cho người dùng này.";
+      status.className = "api-connection-status";
+      return;
+    }
+
+    tbody.innerHTML = transactions.map(item => {
+      const id = Number(item.chuyenKhoanId);
+      const sourceId = Number(item.tkNguonId);
+      const destinationId = Number(item.tkDichId);
+      const amount = Number(item.soTien);
+      const sourceName = item.tenTkNguon || `Tài khoản ${sourceId}`;
+      const destinationName = item.tenTkDich || `Tài khoản ${destinationId}`;
+      const description = item.moTa && String(item.moTa).trim()
+        ? String(item.moTa).trim() : "—";
+      return `<tr>
+        <td>#${Number.isFinite(id) ? id : "—"}</td>
+        <td class="date-cell">${escapeHtml(dateTimeLabel(item.ngayTao))}</td>
+        <td>${escapeHtml(sourceName)} <small class="history-account-id">#${Number.isFinite(sourceId) ? sourceId : "—"}</small></td>
+        <td>${escapeHtml(destinationName)} <small class="history-account-id">#${Number.isFinite(destinationId) ? destinationId : "—"}</small></td>
+        <td class="align-right amount-out">${Number.isFinite(amount) ? escapeHtml(money(amount)) : "—"}</td>
+        <td>${escapeHtml(description)}</td>
+      </tr>`;
+    }).join("");
+
+    status.textContent = `Đã tải ${transactions.length} giao dịch chuyển tiền gần nhất.`;
+    status.className = "api-connection-status is-success";
+  }
+
+  async function refreshTransferHistory() {
+    const panel = $("#transferHistoryPanel");
+    const status = $("#transferHistoryStatus");
+    const button = $("#refreshTransferHistoryBtn");
+    if (!panel || !status || !activeApiToken) return;
+
+    panel.hidden = false;
+    panel.removeAttribute("hidden");
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Đang tải...";
+    }
+    status.textContent = "Đang tải lịch sử chuyển tiền...";
+    status.className = "api-connection-status";
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chuyen-khoan`, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+          "Authorization": `Bearer ${activeApiToken}`
+        },
+        cache: "no-store"
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      const body = contentType.includes("application/json")
+        ? await response.json()
+        : await response.text();
+
+      if (!response.ok) {
+        const message = body && typeof body === "object"
+          ? (body.detail || body.title || body.message)
+          : null;
+        throw new Error(`${response.status}: ${message || "Không thể tải lịch sử chuyển tiền."}`);
+      }
+
+      if (!Array.isArray(body)) {
+        throw new Error("API lịch sử không trả về đúng định dạng danh sách.");
+      }
+
+      renderTransferHistory(body);
+    } catch (error) {
+      status.textContent = error instanceof TypeError
+        ? "Không thể gọi API lịch sử. Kiểm tra Flask Gateway và kết nối mạng."
+        : (error.message || "Không thể tải lịch sử chuyển tiền.");
+      status.className = "api-connection-status is-error";
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Tải lại lịch sử";
+      }
+    }
+  }
+
+  function renderApiCategories(categories) {
+    const list = $("#apiCategoryList");
+    if (!list) return;
+    if (!Array.isArray(categories) || categories.length === 0) {
+      list.innerHTML = '<div class="api-category-empty">Bạn chưa có danh mục. Hãy tạo danh mục thu nhập hoặc chi tiêu bên dưới.</div>';
+      return;
+    }
+    list.innerHTML = categories.map(category => {
+      const kind = String(category.loaiGd || "").toLowerCase();
+      const isIncome = kind === "thu";
+      return `<div class="api-category-item">
+        <div><div class="api-category-name">${escapeHtml(category.tenDanhMuc || "Danh mục")}</div>
+        <div class="api-category-meta">Mã danh mục #${Number(category.danhMucId)}</div></div>
+        <span class="api-category-kind ${isIncome ? "income" : "expense"}">${isIncome ? "Thu nhập" : "Chi tiêu"}</span>
+      </div>`;
+    }).join("");
+  }
+
+  async function refreshCategoriesFromApi() {
+    const panel = $("#categories");
+    const status = $("#categoryApiStatus");
+    const button = $("#refreshCategoriesBtn");
+    if (!activeApiToken || !panel || !status) return;
+
+    panel.hidden = false;
+    panel.removeAttribute("hidden");
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Đang tải...";
+    }
+    status.textContent = "Đang tải danh mục...";
+    status.className = "api-connection-status";
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/danh-muc`, {
+        method: "GET",
+        headers: { "Accept": "application/json", "Authorization": `Bearer ${activeApiToken}` },
+        cache: "no-store"
+      });
+      const body = (response.headers.get("content-type") || "").includes("application/json")
+        ? await response.json() : await response.text();
+      if (!response.ok) {
+        const message = body && typeof body === "object" ? (body.detail || body.title || body.message) : null;
+        throw new Error(`${response.status}: ${message || "Không thể tải danh mục."}`);
+      }
+      if (!Array.isArray(body)) throw new Error("API danh mục không trả về danh sách hợp lệ.");
+      activeApiCategories = body;
+      renderApiCategories(body);
+      updateCategoryOptions();
+      status.textContent = `Đã tải ${body.length} danh mục của bạn.`;
+      status.className = "api-connection-status is-success";
+    } catch (error) {
+      status.textContent = error instanceof TypeError
+        ? "Không thể gọi API danh mục. Kiểm tra Flask Gateway."
+        : (error.message || "Không thể tải danh mục.");
+      status.className = "api-connection-status is-error";
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Tải lại danh mục";
+      }
+    }
+  }
+
+  async function refreshTransactionsFromApi() {
+    const status = $("#transactionListStatus");
+    if (!activeApiToken || !status) return;
+    status.textContent = "Đang tải giao dịch thu/chi...";
+    status.className = "api-connection-status";
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/giao-dich`, {
+        method: "GET",
+        headers: { "Accept": "application/json", "Authorization": `Bearer ${activeApiToken}` },
+        cache: "no-store"
+      });
+      const body = (response.headers.get("content-type") || "").includes("application/json")
+        ? await response.json() : await response.text();
+      if (!response.ok) {
+        const message = body && typeof body === "object" ? (body.detail || body.title || body.message) : null;
+        throw new Error(`${response.status}: ${message || "Không thể tải lịch sử thu/chi."}`);
+      }
+      if (!Array.isArray(body)) throw new Error("API giao dịch không trả về danh sách hợp lệ.");
+      activeApiTransactions = body;
+      renderTransactions();
+      updateApiSummary();
+      status.textContent = `Đã tải ${body.length} giao dịch thu/chi gần nhất từ API.`;
+      status.className = "api-connection-status is-success";
+      const subtitle = $("#transactionListSubtitle");
+      if (subtitle) subtitle.textContent = "Lịch sử thu/chi thật của người dùng đang đăng nhập.";
+    } catch (error) {
+      status.textContent = error instanceof TypeError
+        ? "Không thể gọi API giao dịch. Kiểm tra Flask Gateway."
+        : (error.message || "Không thể tải lịch sử thu/chi.");
+      status.className = "api-connection-status is-error";
+    }
+  }
+
+  function updateApiSummary() {
+    if (!activeApiToken) return;
+    const totalBalance = activeApiAccounts.reduce((sum, item) => sum + Number(item.soDuHienTai || 0), 0);
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const thisMonth = activeApiTransactions.filter(item => String(item.ngayGd || "").slice(0, 7) === monthKey);
+    const income = thisMonth.filter(item => String(item.loaiGd).toLowerCase() === "thu")
+      .reduce((sum, item) => sum + Number(item.soTien || 0), 0);
+    const expense = thisMonth.filter(item => String(item.loaiGd).toLowerCase() === "chi")
+      .reduce((sum, item) => sum + Number(item.soTien || 0), 0);
+    $("#balanceAmount").innerHTML = amountMarkup(totalBalance);
+    $("#incomeAmount").innerHTML = amountMarkup(income);
+    $("#expenseAmount").innerHTML = amountMarkup(expense);
+    const subtitle = $(".welcome-row .subtitle");
+    if (subtitle) subtitle.textContent = "Số dư lấy từ các ví thật; tổng thu/chi tháng này tính trên tối đa 50 giao dịch gần nhất do API trả về.";
+  }
+
+  async function createCategoryFromApi(event) {
+    event.preventDefault();
+    const status = $("#categoryApiStatus");
+    const button = $("#createCategoryButton");
+    if (!activeApiToken) {
+      status.textContent = "Vui lòng đăng nhập trước.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+    const tenDanhMuc = $("#newCategoryName").value.trim();
+    const loaiGd = $("#newCategoryKind").value;
+    if (!tenDanhMuc || tenDanhMuc.length > 100) {
+      status.textContent = "Tên danh mục phải có từ 1 đến 100 ký tự.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+    button.disabled = true;
+    button.textContent = "Đang tạo...";
+    status.textContent = "Đang tạo danh mục...";
+    status.className = "api-connection-status";
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/danh-muc`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${activeApiToken}`
+        },
+        body: JSON.stringify({ tenDanhMuc, loaiGd }),
+        cache: "no-store"
+      });
+      const body = (response.headers.get("content-type") || "").includes("application/json")
+        ? await response.json() : await response.text();
+      if (!response.ok) {
+        const message = body && typeof body === "object" ? (body.detail || body.title || body.message) : null;
+        throw new Error(`${response.status}: ${message || "Không thể tạo danh mục."}`);
+      }
+      $("#createCategoryForm").reset();
+      $("#newCategoryKind").value = loaiGd;
+      await refreshCategoriesFromApi();
+      updateCategoryOptions();
+      status.textContent = `Đã tạo danh mục “${tenDanhMuc}” (${loaiGd === "thu" ? "thu nhập" : "chi tiêu"}).`;
+      status.className = "api-connection-status is-success";
+      showToast("Đã tạo danh mục mới.");
+    } catch (error) {
+      status.textContent = error instanceof TypeError
+        ? "Không thể gọi API danh mục. Kiểm tra Flask Gateway."
+        : (error.message || "Không thể tạo danh mục.");
+      status.className = "api-connection-status is-error";
+    } finally {
+      button.disabled = false;
+      button.textContent = "Tạo danh mục";
+    }
   }
 
   function accountName(key) {
-    return ({ cash: "Ví tiền mặt", bank: "Tài khoản ngân hàng", wallet: "Ví điện tử" })[key] || "Tài khoản";
+    const known = ({ cash: "Ví tiền mặt", bank: "Tài khoản ngân hàng", wallet: "Ví điện tử" })[key];
+    if (known) return known;
+    return typeof key === "string" && key.trim() ? key : "Tài khoản";
   }
 
   function showToast(message) {
@@ -143,50 +421,115 @@
     if (!tbody) return;
     const query = ($("#transactionSearch")?.value || $("#globalSearch")?.value || "").trim().toLocaleLowerCase("vi");
     const kind = $("#transactionTypeFilter")?.value || "all";
+    const usingApi = Boolean(activeApiToken);
+    const sourceRows = usingApi
+      ? activeApiTransactions.map(item => ({
+          id: item.giaoDichId,
+          name: item.moTa && String(item.moTa).trim() ? item.moTa : item.tenDanhMuc,
+          description: item.moTa || "",
+          account: item.tenTk || `Tài khoản #${item.tkId}`,
+          kind: String(item.loaiGd || "").toLowerCase(),
+          category: item.tenDanhMuc || "Khác",
+          amount: Number(item.soTien),
+          date: item.ngayGd || ""
+        }))
+      : state.transactions;
 
-    const rows = [...state.transactions]
-      .sort((a, b) => b.date.localeCompare(a.date))
+    const rows = [...sourceRows]
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)))
       .filter(item => {
         const searchable = `${item.name} ${accountName(item.account)} ${item.category} ${item.description}`.toLocaleLowerCase("vi");
         return (!query || searchable.includes(query)) && (kind === "all" || item.kind === kind);
       });
 
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty-row">Không tìm thấy giao dịch phù hợp.</td></tr>';
-      return;
+      tbody.innerHTML = `<tr><td colspan="4" class="empty-row">${usingApi ? "Chưa có giao dịch thu/chi phù hợp." : "Không tìm thấy giao dịch phù hợp."}</td></tr>`;
+    } else {
+      tbody.innerHTML = rows.map(item => {
+        const style = categoryStyle[item.category] || categoryStyle["Khác"];
+        const sign = item.kind === "thu" ? "+" : "−";
+        const amountClass = item.kind === "thu" ? "amount-in" : "amount-out";
+        return `<tr>
+          <td><div class="transaction-title"><span class="transaction-icon ${style.className}">${style.icon}</span><span><strong>${escapeHtml(item.name || item.category || "Giao dịch")}</strong><small>${escapeHtml(accountName(item.account))}</small></span></div></td>
+          <td class="date-cell">${dateLabel(item.date)}</td>
+          <td><span class="category-pill ${style.pill}">${escapeHtml(item.category)}</span></td>
+          <td class="align-right ${amountClass}">${sign} ${money(item.amount)}</td>
+        </tr>`;
+      }).join("");
     }
 
-    tbody.innerHTML = rows.map(item => {
-      const style = categoryStyle[item.category] || categoryStyle["Khác"];
-      const sign = item.kind === "thu" ? "+" : "−";
-      const amountClass = item.kind === "thu" ? "amount-in" : "amount-out";
-      return `<tr>
-        <td><div class="transaction-title"><span class="transaction-icon ${style.className}">${style.icon}</span><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(accountName(item.account))}</small></span></div></td>
-        <td class="date-cell">${dateLabel(item.date)}</td>
-        <td><span class="category-pill ${style.pill}">${escapeHtml(item.category)}</span></td>
-        <td class="align-right ${amountClass}">${sign} ${money(item.amount)}</td>
-      </tr>`;
-    }).join("");
-
     const count = $(".nav-count");
-    if (count) count.textContent = String(state.transactions.length);
+    if (count) count.textContent = String(sourceRows.length);
+  }
+
+  function updateTransactionAccountOptions() {
+    const select = $("#transactionAccount");
+    if (!select) return;
+    const previous = select.value;
+    if (!activeApiToken) {
+      select.innerHTML = '<option value="">Đăng nhập để tải tài khoản</option>';
+      return;
+    }
+    if (!activeApiAccounts.length) {
+      select.innerHTML = '<option value="">Bạn chưa có tài khoản</option>';
+      return;
+    }
+    select.innerHTML = '<option value="">Chọn tài khoản</option>' + activeApiAccounts.map(account => {
+      const id = Number(account.tkId);
+      const balance = Number(account.soDuHienTai);
+      const currency = account.donViTienTe || "VND";
+      return `<option value="${id}">${escapeHtml(account.tenTk || `Tài khoản ${id}`)} (#${id}) — ${escapeHtml(VND.format(balance))} ${escapeHtml(currency)}</option>`;
+    }).join("");
+    if (activeApiAccounts.some(account => String(account.tkId) === previous)) {
+      select.value = previous;
+    } else if (activeApiAccounts.length === 1) {
+      select.value = String(activeApiAccounts[0].tkId);
+    }
   }
 
   function updateCategoryOptions() {
     const kind = $("#transactionKind").value;
     const select = $("#transactionCategory");
     const current = select.value;
-    select.innerHTML = categoryOptions[kind]
-      .map(category => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`)
+    const matches = activeApiCategories.filter(category =>
+      String(category.loaiGd || "").toLowerCase() === kind
+    );
+
+    if (!activeApiToken) {
+      select.innerHTML = '<option value="">Đăng nhập để tải danh mục</option>';
+      return;
+    }
+
+    if (!matches.length) {
+      select.innerHTML = `<option value="">Chưa có danh mục ${kind === "thu" ? "thu nhập" : "chi tiêu"}</option>`;
+      $("#transactionCategoryHint").innerHTML = '<span>ⓘ</span> Chưa có danh mục phù hợp. Hãy vào mục Danh mục để tạo trước khi ghi giao dịch.';
+      return;
+    }
+
+    select.innerHTML = '<option value="">Chọn danh mục</option>' + matches
+      .map(category => `<option value="${Number(category.danhMucId)}">${escapeHtml(category.tenDanhMuc)}</option>`)
       .join("");
-    if (categoryOptions[kind].includes(current)) select.value = current;
+    if (matches.some(category => String(category.danhMucId) === current)) {
+      select.value = current;
+    }
+    $("#transactionCategoryHint").innerHTML = '<span>ⓘ</span> Giao dịch sẽ được lưu qua API. Nếu cần loại danh mục khác, hãy quản lý tại mục Danh mục.';
   }
 
   function openModal() {
+    if (!activeApiToken) {
+      showToast("Đăng nhập trước khi ghi nhận thu nhập hoặc chi tiêu.");
+      $("#loginEmail").focus();
+      return;
+    }
     const modal = $("#transactionModal");
     $("#transactionForm").reset();
     $("#transactionDate").value = new Date().toLocaleDateString("en-CA");
+    $("#transactionKind").value = "chi";
+    updateTransactionAccountOptions();
     updateCategoryOptions();
+    const status = $("#transactionApiStatus");
+    status.textContent = "";
+    status.className = "api-connection-status";
     modal.classList.add("is-open");
     modal.setAttribute("aria-hidden", "false");
     document.body.classList.add("modal-open");
@@ -199,6 +542,108 @@
     modal.setAttribute("aria-hidden", "true");
     document.body.classList.remove("modal-open");
     $("#addTransactionBtn").focus();
+  }
+
+  async function addTransaction(event) {
+    event.preventDefault();
+    const status = $("#transactionApiStatus");
+    const button = $("#saveTransactionButton");
+    if (!activeApiToken) {
+      status.textContent = "Đăng nhập trước khi lưu giao dịch.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    const kind = $("#transactionKind").value;
+    const amountText = $("#transactionAmount").value.trim();
+    const soTien = Number(amountText);
+    const tkId = Number($("#transactionAccount").value);
+    const danhMucId = Number($("#transactionCategory").value);
+    const date = $("#transactionDate").value;
+    const moTa = $("#transactionDescription").value.trim();
+    const category = activeApiCategories.find(item => Number(item.danhMucId) === danhMucId);
+    const account = activeApiAccounts.find(item => Number(item.tkId) === tkId);
+
+    if (!account || !Number.isInteger(tkId)) {
+      status.textContent = "Vui lòng chọn một tài khoản hợp lệ.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+    if (!category || !Number.isInteger(danhMucId)) {
+      status.textContent = "Vui lòng chọn danh mục hợp lệ. Nếu chưa có, hãy tạo trong mục Danh mục.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+    if (String(category.loaiGd).toLowerCase() !== kind) {
+      status.textContent = "Loại giao dịch phải khớp với loại danh mục.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+    if (!/^\d+(?:\.\d{1,2})?$/.test(amountText) || !Number.isFinite(soTien) || soTien <= 0 || soTien > 9999999999999999.99) {
+      status.textContent = "Số tiền phải lớn hơn 0 và có tối đa 2 chữ số thập phân.";
+      status.className = "api-connection-status is-error";
+      $("#transactionAmount").focus();
+      return;
+    }
+    if (moTa.length > 250) {
+      status.textContent = "Mô tả không được vượt quá 250 ký tự.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+    if (kind === "chi" && Number(account.soDuHienTai) < soTien) {
+      status.textContent = "Số dư tài khoản hiện không đủ. Hãy tải lại tài khoản trước khi thử.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    const ngayGd = date ? new Date(`${date}T12:00:00`).toISOString() : null;
+    const payload = { tkId, danhMucId, loaiGd: kind, soTien, ngayGd, moTa: moTa || null };
+    button.disabled = true;
+    button.textContent = "Đang lưu...";
+    status.textContent = "Đang lưu giao dịch và cập nhật số dư...";
+    status.className = "api-connection-status";
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/giao-dich`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${activeApiToken}`
+        },
+        body: JSON.stringify(payload),
+        cache: "no-store"
+      });
+      const body = (response.headers.get("content-type") || "").includes("application/json")
+        ? await response.json() : await response.text();
+      if (!response.ok) {
+        let message = body && typeof body === "object" ? (body.detail || body.title || body.message) : null;
+        if (response.status === 400) message = message || "Dữ liệu giao dịch không hợp lệ.";
+        else if (response.status === 401) message = "Phiên đăng nhập hết hạn hoặc không hợp lệ. Hãy đăng nhập lại.";
+        else if (response.status === 409) message = message || "Giao dịch bị từ chối. Kiểm tra số dư, tài khoản và danh mục.";
+        else if (response.status === 429) message = "Bạn gửi yêu cầu quá nhanh. Hãy đợi một lát rồi thử lại.";
+        else if (response.status === 502) message = "Flask Gateway không kết nối được backend C#.";
+        else if (response.status === 503) message = "Gateway hoặc Redis đang gặp sự cố.";
+        throw new Error(`${response.status}: ${message || "Không thể lưu giao dịch."}`);
+      }
+
+      const transactionId = body && typeof body === "object" ? body.giaoDichId : null;
+      status.textContent = `Đã ghi nhận ${kind === "thu" ? "thu nhập" : "chi tiêu"}${transactionId != null ? ` (mã #${transactionId})` : ""}. Đang làm mới dữ liệu...`;
+      status.className = "api-connection-status is-success";
+      $("#transactionForm").reset();
+      $("#transactionDate").value = new Date().toLocaleDateString("en-CA");
+      closeModal();
+      await refreshAccountsFromApi();
+      showToast(`Đã ghi nhận ${kind === "thu" ? "thu nhập" : "chi tiêu"}${transactionId != null ? ` (#${transactionId})` : ""}.`);
+    } catch (error) {
+      status.textContent = error instanceof TypeError
+        ? "Không nhận được phản hồi từ API. Hãy tải lại lịch sử trước khi gửi lại để tránh tạo giao dịch trùng."
+        : (error.message || "Đã xảy ra lỗi khi lưu giao dịch.");
+      status.className = "api-connection-status is-error";
+    } finally {
+      button.disabled = false;
+      button.textContent = "Lưu giao dịch";
+    }
   }
 
   function updateCashflowChart() {
@@ -231,57 +676,6 @@
     $("#chartRangeButton").innerHTML = `${months} tháng gần đây <span>⌄</span>`;
   }
 
-  function addTransaction(event) {
-    event.preventDefault();
-    const kind = $("#transactionKind").value;
-    const amount = Number($("#transactionAmount").value);
-    const category = $("#transactionCategory").value;
-    const account = $("#transactionAccount").value;
-    const date = $("#transactionDate").value;
-    const description = $("#transactionDescription").value.trim();
-
-    if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(amount * 100) || Math.round(amount * 100) !== amount * 100) {
-      showToast("Số tiền phải lớn hơn 0 và tối đa 2 chữ số thập phân.");
-      $("#transactionAmount").focus();
-      return;
-    }
-    if (!date || !description) {
-      showToast("Vui lòng nhập ngày và mô tả giao dịch.");
-      return;
-    }
-
-    const transaction = {
-      id: (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`),
-      name: description,
-      description,
-      account,
-      kind,
-      category,
-      amount,
-      date
-    };
-
-    state.transactions.push(transaction);
-    if (kind === "thu") {
-      state.balance += amount;
-      state.income += amount;
-      state.accounts[account] += amount;
-    } else {
-      state.balance -= amount;
-      state.expense += amount;
-      state.accounts[account] -= amount;
-      state.budgetSpent += amount;
-      if (state.categoryBudgets[category]) {
-        state.categoryBudgets[category].spent += amount;
-      }
-    }
-
-    persistState();
-    updateSummary();
-    renderTransactions();
-    closeModal();
-    showToast("Đã thêm giao dịch vào dữ liệu demo trên trình duyệt.");
-  }
 
   const API_BASE_URL = "http://127.0.0.1:8081";
 
@@ -299,7 +693,72 @@
     return labels[normalized] || raw || "Tài khoản";
   }
 
+  function createIdempotencyKey() {
+    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+    if (!globalThis.crypto?.getRandomValues) {
+      throw new Error("Trình duyệt không hỗ trợ tạo Idempotency-Key an toàn.");
+    }
+
+    const bytes = new Uint8Array(16);
+    globalThis.crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map(value => value.toString(16).padStart(2, "0"));
+    return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10, 16).join("")}`;
+  }
+
+  function renderTransferAccountOptions(accounts) {
+    activeApiAccounts = Array.isArray(accounts) ? accounts : [];
+    const source = $("#transferSourceId");
+    const destination = $("#transferDestinationId");
+    const button = $("#transferButton");
+    const status = $("#transferStatus");
+    if (!source || !destination || !button || !status) return;
+
+    const previousSource = source.value;
+    const previousDestination = destination.value;
+    const accountOptions = activeApiAccounts.map(account => {
+      const id = Number(account.tkId);
+      const name = escapeHtml(account.tenTk || `Tài khoản ${id}`);
+      const currency = escapeHtml(account.donViTienTe || "VND");
+      const balance = Number(account.soDuHienTai);
+      const balanceLabel = Number.isFinite(balance) ? VND.format(balance) : "—";
+      return `<option value="${id}">${name} (#${id}) — ${balanceLabel} ${currency}</option>`;
+    }).join("");
+
+    source.innerHTML = `<option value="">Chọn tài khoản nguồn</option>${accountOptions}`;
+    destination.innerHTML = `<option value="">Chọn tài khoản đích</option>${accountOptions}`;
+
+    if (activeApiAccounts.some(account => String(account.tkId) === previousSource)) {
+      source.value = previousSource;
+    } else if (activeApiAccounts.length > 0) {
+      source.value = String(activeApiAccounts[0].tkId);
+    }
+
+    if (activeApiAccounts.some(account => String(account.tkId) === previousDestination)) {
+      destination.value = previousDestination;
+    } else {
+      const other = activeApiAccounts.find(account => String(account.tkId) !== source.value);
+      if (other) destination.value = String(other.tkId);
+    }
+
+    if (source.value && source.value === destination.value) {
+      const other = activeApiAccounts.find(account => String(account.tkId) !== source.value);
+      destination.value = other ? String(other.tkId) : "";
+    }
+
+    button.disabled = activeApiAccounts.length < 2;
+    if (activeApiAccounts.length < 2) {
+      status.textContent = "Bạn cần ít nhất hai tài khoản đang hoạt động để chuyển tiền.";
+      status.className = "api-connection-status";
+    } else {
+      status.textContent = "Chọn hai tài khoản khác nhau và nhập số tiền cần chuyển.";
+      status.className = "api-connection-status";
+    }
+  }
+
   function renderApiAccounts(accounts) {
+    renderTransferAccountOptions(accounts);
     const container = $("#apiAccountsContainer");
     const demo = $("#demoAccountsContainer");
     const subtitle = $("#accountsSubtitle");
@@ -392,6 +851,8 @@
       }
 
       activeApiToken = body.accessToken;
+      activeApiCategories = [];
+      activeApiTransactions = [];
       activeApiUser = {
         userId: body.userId,
         hoTen: body.hoTen || "Người dùng",
@@ -458,6 +919,11 @@
           $("#loginForm").hidden = false;
           $("#apiSessionPanel").hidden = true;
           $("#createAccountForm").hidden = true;
+          $("#apiTransferPanel").hidden = true;
+          $("#transferHistoryPanel").hidden = true;
+          $("#categories").hidden = true;
+          activeApiCategories = [];
+          activeApiTransactions = [];
           message = "401: Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.";
         } else if (response.status === 403) {
           message = "403: Bạn không có quyền xem danh sách tài khoản.";
@@ -478,11 +944,18 @@
       renderApiAccounts(body);
       $("#createAccountForm").hidden = false;
       $("#createAccountForm").removeAttribute("hidden");
+      $("#apiTransferPanel").hidden = false;
+      $("#apiTransferPanel").removeAttribute("hidden");
       $("#createAccountStatus").textContent = "Sẵn sàng tạo tài khoản bằng API.";
       $("#createAccountStatus").className = "api-connection-status";
       status.textContent = `Đăng nhập thành công. Đã tải ${body.length} tài khoản từ API.`;
       status.className = "api-connection-status is-success";
       showToast(`Đã tải ${body.length} tài khoản từ backend.`);
+      await Promise.all([
+        refreshTransferHistory(),
+        refreshCategoriesFromApi(),
+        refreshTransactionsFromApi()
+      ]);
     } catch (error) {
       status.textContent = error instanceof TypeError
         ? "Không thể gọi API. Kiểm tra Flask, CORS và địa chỉ frontend."
@@ -497,10 +970,26 @@
   function logoutFromApi() {
     activeApiToken = null;
     activeApiUser = null;
+    activeApiAccounts = [];
+    activeApiCategories = [];
+    activeApiTransactions = [];
+    pendingTransferAttempt = null;
     $("#loginPassword").value = "";
     $("#loginForm").hidden = false;
     $("#apiSessionPanel").hidden = true;
     $("#createAccountForm").hidden = true;
+    $("#apiTransferPanel").hidden = true;
+    $("#transferHistoryPanel").hidden = true;
+    $("#categories").hidden = true;
+    $("#apiCategoryList").innerHTML = "";
+    $("#transactionRows").innerHTML = "";
+    $("#transactionListStatus").textContent = "Đang hiển thị giao dịch minh họa. Đăng nhập để tải dữ liệu thật.";
+    $("#transactionListStatus").className = "api-connection-status";
+    $("#transactionListSubtitle").textContent = "Các khoản thu chi mới nhất của bạn";
+    $(".welcome-row .subtitle").textContent = "Đây là tình hình tài chính của bạn trong tháng này.";
+    $("#transferHistoryRows").innerHTML = '<tr><td colspan="6" class="empty-row">Đăng nhập để xem lịch sử chuyển tiền.</td></tr>';
+    $("#transferHistoryStatus").textContent = "Đăng nhập để tải lịch sử chuyển tiền.";
+    $("#transferHistoryStatus").className = "api-connection-status";
     $("#apiAccountsContainer").hidden = true;
     $("#demoAccountsContainer").hidden = false;
     $("#apiBadge").textContent = "DEMO";
@@ -509,6 +998,8 @@
     const status = $("#apiConnectionStatus");
     status.textContent = "Đã đăng xuất. JWT đã được xóa khỏi bộ nhớ của trang.";
     status.className = "api-connection-status";
+    updateSummary();
+    renderTransactions();
     showToast("Đã đăng xuất khỏi Finora.");
   }
 
@@ -575,6 +1066,9 @@
           $("#loginForm").hidden = false;
           $("#apiSessionPanel").hidden = true;
           $("#createAccountForm").hidden = true;
+          $("#apiTransferPanel").hidden = true;
+          $("#transferHistoryPanel").hidden = true;
+          $("#categories").hidden = true;
           $("#apiConnectionStatus").textContent = message;
           $("#apiConnectionStatus").className = "api-connection-status is-error";
         } else if (response.status === 403) {
@@ -618,6 +1112,11 @@
       $("#apiConnectionStatus").className = "api-connection-status is-success";
       $("#createAccountForm").reset();
       $("#newAccountOpeningBalance").value = "0";
+      await Promise.all([
+        refreshTransferHistory(),
+        refreshCategoriesFromApi(),
+        refreshTransactionsFromApi()
+      ]);
       showToast("Đã tạo tài khoản và tải lại danh sách từ API.");
     } catch (error) {
       status.textContent = error instanceof TypeError
@@ -630,6 +1129,171 @@
     }
   }
 
+  async function transferBetweenAccounts(event) {
+    event.preventDefault();
+
+    const status = $("#transferStatus");
+    const button = $("#transferButton");
+
+    if (!activeApiToken) {
+      status.textContent = "Vui lòng đăng nhập trước khi chuyển tiền.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    const tkNguonId = Number($("#transferSourceId").value);
+    const tkDichId = Number($("#transferDestinationId").value);
+    const amountText = $("#transferAmount").value.trim();
+    const soTien = Number(amountText);
+    const moTa = $("#transferDescription").value.trim();
+
+    if (!tkNguonId || !tkDichId || !Number.isInteger(tkNguonId) || !Number.isInteger(tkDichId)) {
+      status.textContent = "Vui lòng chọn tài khoản nguồn và tài khoản đích.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    if (tkNguonId === tkDichId) {
+      status.textContent = "Tài khoản nguồn và đích phải khác nhau.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    if (!/^\d+(?:\.\d{1,2})?$/.test(amountText) ||
+        !Number.isFinite(soTien) || soTien <= 0 ||
+        soTien > 9999999999999999.99) {
+      status.textContent = "Số tiền phải lớn hơn 0 và có tối đa 2 chữ số thập phân.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    if (moTa.length > 250) {
+      status.textContent = "Mô tả không được vượt quá 250 ký tự.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    const sourceAccount = activeApiAccounts.find(account => Number(account.tkId) === tkNguonId);
+    const destinationAccount = activeApiAccounts.find(account => Number(account.tkId) === tkDichId);
+    if (!sourceAccount || !destinationAccount) {
+      status.textContent = "Không tìm thấy tài khoản đã chọn. Hãy tải lại danh sách.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    const sourceCurrency = String(sourceAccount.donViTienTe || "VND").toUpperCase();
+    const destinationCurrency = String(destinationAccount.donViTienTe || "VND").toUpperCase();
+    if (sourceCurrency !== destinationCurrency) {
+      status.textContent = "Hai tài khoản phải cùng đơn vị tiền tệ.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    const payload = {
+      tkNguonId,
+      tkDichId,
+      soTien,
+      moTa: moTa || null
+    };
+    const signature = JSON.stringify(payload);
+    let idempotencyKey;
+
+    try {
+      if (pendingTransferAttempt && pendingTransferAttempt.signature === signature) {
+        idempotencyKey = pendingTransferAttempt.key;
+      } else {
+        idempotencyKey = createIdempotencyKey();
+        pendingTransferAttempt = { signature, key: idempotencyKey };
+      }
+    } catch (error) {
+      status.textContent = error.message || "Không thể tạo mã yêu cầu giao dịch.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Đang chuyển...";
+    status.textContent = "Đang gửi giao dịch đến backend...";
+    status.className = "api-connection-status";
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chuyen-khoan`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${activeApiToken}`,
+          "Idempotency-Key": idempotencyKey
+        },
+        body: JSON.stringify(payload),
+        cache: "no-store"
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      const responseBody = contentType.includes("application/json")
+        ? await response.json()
+        : await response.text();
+
+      if (!response.ok) {
+        let message = responseBody && typeof responseBody === "object"
+          ? (responseBody.detail || responseBody.title || responseBody.message)
+          : null;
+        if (response.status === 400) {
+          message = message || "Dữ liệu chuyển tiền không hợp lệ.";
+          pendingTransferAttempt = null;
+        } else if (response.status === 401) {
+          message = "Phiên đăng nhập hết hạn hoặc không hợp lệ. Đăng nhập lại để tiếp tục.";
+          activeApiToken = null;
+          activeApiUser = null;
+          activeApiAccounts = [];
+          pendingTransferAttempt = null;
+          $("#loginForm").hidden = false;
+          $("#apiSessionPanel").hidden = true;
+          $("#createAccountForm").hidden = true;
+          $("#apiTransferPanel").hidden = true;
+        } else if (response.status === 409) {
+          message = message || "Giao dịch bị từ chối. Hãy kiểm tra số dư và thông tin tài khoản.";
+          pendingTransferAttempt = null;
+        } else if (response.status === 429) {
+          message = "Bạn gửi yêu cầu quá nhanh. Hãy đợi một lát rồi thử lại.";
+        } else if (response.status === 502) {
+          message = "502: Flask không kết nối được backend C#. Nếu thử lại, hãy giữ nguyên thông tin giao dịch.";
+        } else if (response.status === 503) {
+          message = "503: Gateway hoặc Redis đang gặp sự cố. Giữ nguyên thông tin nếu cần thử lại.";
+        } else {
+          message = message || `Không thể hoàn tất giao dịch (HTTP ${response.status}). Giữ nguyên thông tin nếu cần thử lại.`;
+        }
+        throw new Error(`${response.status}: ${message}`);
+      }
+
+      const transactionId = responseBody && typeof responseBody === "object"
+        ? responseBody.chuyenKhoanId
+        : null;
+      pendingTransferAttempt = null;
+      $("#transferAmount").value = "";
+      $("#transferDescription").value = "";
+
+      await refreshAccountsFromApi();
+      const accountsStatus = $("#apiConnectionStatus");
+      if (accountsStatus.classList.contains("is-error")) {
+        status.textContent = `Chuyển tiền thành công${transactionId != null ? ` (mã #${transactionId})` : ""}, nhưng chưa tải lại được số dư. Hãy nhấn Tải lại tài khoản.`;
+        status.className = "api-connection-status is-error";
+      } else {
+        status.textContent = `Chuyển tiền thành công${transactionId != null ? ` (mã giao dịch #${transactionId})` : ""}. Số dư đã được tải lại.`;
+        status.className = "api-connection-status is-success";
+        showToast(`Đã chuyển tiền thành công${transactionId != null ? ` (#${transactionId})` : ""}.`);
+      }
+    } catch (error) {
+      status.textContent = error instanceof TypeError
+        ? "Không nhận được phản hồi từ API. Để tránh chuyển trùng, hãy giữ nguyên các trường và thử lại; cùng nội dung sẽ dùng lại Idempotency-Key."
+        : (error.message || "Đã xảy ra lỗi khi chuyển tiền.");
+      status.className = "api-connection-status is-error";
+    } finally {
+      button.textContent = "Chuyển tiền";
+      button.disabled = activeApiAccounts.length < 2 || !activeApiToken;
+    }
+  }
+
   function initNavigation() {
     $$(".nav-item").forEach(link => {
       link.addEventListener("click", event => {
@@ -638,6 +1302,21 @@
         if (!target) {
           event.preventDefault();
           showToast("Mục này sẽ được bổ sung ở bước tiếp theo.");
+          return;
+        }
+        if (targetId === "apiTransferPanel" && target.hidden) {
+          event.preventDefault();
+          showToast("Đăng nhập và tải tài khoản trước khi chuyển tiền.");
+          return;
+        }
+        if (targetId === "transferHistoryPanel" && target.hidden) {
+          event.preventDefault();
+          showToast("Đăng nhập để xem lịch sử chuyển tiền.");
+          return;
+        }
+        if (targetId === "categories" && target.hidden) {
+          event.preventDefault();
+          showToast("Đăng nhập để quản lý danh mục.");
           return;
         }
         $$(".nav-item").forEach(item => item.classList.remove("active"));
@@ -656,14 +1335,28 @@
     $("#addTransactionBtn").addEventListener("click", openModal);
     $("#loginForm").addEventListener("submit", loginToApi);
     $("#refreshAccountsBtn").addEventListener("click", refreshAccountsFromApi);
+    $("#refreshTransferHistoryBtn").addEventListener("click", refreshTransferHistory);
     $("#logoutBtn").addEventListener("click", logoutFromApi);
     $("#createAccountForm").addEventListener("submit", createAccountFromApi);
+    $("#transferForm").addEventListener("submit", transferBetweenAccounts);
     $$("[data-close-modal]").forEach(button => button.addEventListener("click", closeModal));
     $("#transactionModal").addEventListener("click", event => {
       if (event.target === $("#transactionModal")) closeModal();
     });
     $("#transactionKind").addEventListener("change", updateCategoryOptions);
     $("#transactionForm").addEventListener("submit", addTransaction);
+    $("#createCategoryForm").addEventListener("submit", createCategoryFromApi);
+    $("#refreshCategoriesBtn").addEventListener("click", refreshCategoriesFromApi);
+    $("#openCategoriesBtn").addEventListener("click", () => {
+      closeModal();
+      const panel = $("#categories");
+      if (panel.hidden) {
+        showToast("Đăng nhập để quản lý danh mục.");
+        return;
+      }
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      $("#newCategoryName").focus();
+    });
     $("#transactionSearch").addEventListener("input", renderTransactions);
     $("#transactionTypeFilter").addEventListener("change", renderTransactions);
 
