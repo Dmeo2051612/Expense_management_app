@@ -106,6 +106,13 @@
     return Number.isNaN(date.getTime()) ? escapeHtml(raw) : dateFormatter.format(date);
   }
 
+  function localDateString(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
   const historyDateFormatter = new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit"
@@ -156,7 +163,7 @@
     const panel = $("#transferHistoryPanel");
     const status = $("#transferHistoryStatus");
     const button = $("#refreshTransferHistoryBtn");
-    if (!panel || !status || !activeApiToken) return;
+    if (!panel || !status || !activeApiToken) return false;
 
     panel.hidden = false;
     panel.removeAttribute("hidden");
@@ -183,6 +190,9 @@
         : await response.text();
 
       if (!response.ok) {
+        if (response.status === 401 && activeApiToken) {
+          logoutFromApi("Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.");
+        }
         const message = body && typeof body === "object"
           ? (body.detail || body.title || body.message)
           : null;
@@ -194,11 +204,13 @@
       }
 
       renderTransferHistory(body);
+      return true;
     } catch (error) {
       status.textContent = error instanceof TypeError
         ? "Không thể gọi API lịch sử. Kiểm tra Flask Gateway và kết nối mạng."
         : (error.message || "Không thể tải lịch sử chuyển tiền.");
       status.className = "api-connection-status is-error";
+      return false;
     } finally {
       if (button) {
         button.disabled = false;
@@ -229,7 +241,7 @@
     const panel = $("#categories");
     const status = $("#categoryApiStatus");
     const button = $("#refreshCategoriesBtn");
-    if (!activeApiToken || !panel || !status) return;
+    if (!activeApiToken || !panel || !status) return false;
 
     panel.hidden = false;
     panel.removeAttribute("hidden");
@@ -249,6 +261,9 @@
       const body = (response.headers.get("content-type") || "").includes("application/json")
         ? await response.json() : await response.text();
       if (!response.ok) {
+        if (response.status === 401 && activeApiToken) {
+          logoutFromApi("Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.");
+        }
         const message = body && typeof body === "object" ? (body.detail || body.title || body.message) : null;
         throw new Error(`${response.status}: ${message || "Không thể tải danh mục."}`);
       }
@@ -259,11 +274,13 @@
       updateBudgetCategoryOptions();
       status.textContent = `Đã tải ${body.length} danh mục của bạn.`;
       status.className = "api-connection-status is-success";
+      return true;
     } catch (error) {
       status.textContent = error instanceof TypeError
         ? "Không thể gọi API danh mục. Kiểm tra Flask Gateway."
         : (error.message || "Không thể tải danh mục.");
       status.className = "api-connection-status is-error";
+      return false;
     } finally {
       if (button) {
         button.disabled = false;
@@ -330,7 +347,7 @@
     const panel = $("#apiBudgetsPanel");
     const status = $("#budgetApiStatus");
     const button = $("#refreshBudgetsBtn");
-    if (!activeApiToken || !panel || !status) return;
+    if (!activeApiToken || !panel || !status) return false;
 
     panel.hidden = false;
     panel.removeAttribute("hidden");
@@ -358,16 +375,7 @@
         const message = body && typeof body === "object"
           ? (body.detail || body.title || body.message) : null;
         if (response.status === 401) {
-          activeApiToken = null;
-          activeApiUser = null;
-          activeApiAccounts = [];
-          activeApiCategories = [];
-          activeApiTransactions = [];
-          activeApiBudgets = [];
-          panel.hidden = true;
-          if (demoPanel) demoPanel.hidden = false;
-          $("#loginForm").hidden = false;
-          $("#apiSessionPanel").hidden = true;
+          if (activeApiToken) logoutFromApi("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
           throw new Error("401: Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
         }
         throw new Error(`${response.status}: ${message || "Không thể tải ngân sách."}`);
@@ -378,11 +386,13 @@
       updateBudgetCategoryOptions();
       status.textContent = `Đã tải ${body.length} ngân sách của bạn.`;
       status.className = "api-connection-status is-success";
+      return true;
     } catch (error) {
       status.textContent = error instanceof TypeError
         ? "Không thể gọi API ngân sách. Kiểm tra Flask Gateway."
         : (error.message || "Không thể tải ngân sách.");
       status.className = "api-connection-status is-error";
+      return false;
     } finally {
       if (button) {
         button.disabled = false;
@@ -427,8 +437,11 @@
     button.textContent = "Đang tạo...";
     status.textContent = "Đang tạo ngân sách...";
     status.className = "api-connection-status";
+    let requestOutcomeUnknown = false;
+    let creationConfirmed = false;
 
     try {
+      requestOutcomeUnknown = true;
       const response = await fetch(`${API_BASE_URL}/api/ngan-sach`, {
         method: "POST",
         headers: {
@@ -439,9 +452,14 @@
         body: JSON.stringify({ danhMucId, soTienGioiHan, tuNgay, denNgay }),
         cache: "no-store"
       });
+      requestOutcomeUnknown = false;
+      creationConfirmed = response.ok;
       const body = (response.headers.get("content-type") || "").includes("application/json")
         ? await response.json() : await response.text();
       if (!response.ok) {
+        if (response.status === 401 && activeApiToken) {
+          logoutFromApi("Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.");
+        }
         const message = body && typeof body === "object"
           ? (body.detail || body.title || body.message) : null;
         throw new Error(`${response.status}: ${message || "Không thể tạo ngân sách."}`);
@@ -454,14 +472,23 @@
       $("#createBudgetForm").reset();
       $("#newBudgetStart").value = localDate(new Date(year, month, 1));
       $("#newBudgetEnd").value = localDate(new Date(year, month + 1, 0));
-      await refreshBudgetsFromApi();
+      const refreshed = await refreshBudgetsFromApi();
+      if (!refreshed) {
+        status.textContent = "Ngân sách đã được tạo, nhưng không tải lại được danh sách. Hãy nhấn Tải lại ngân sách; không cần gửi lại biểu mẫu.";
+        status.className = "api-connection-status is-error";
+        return;
+      }
       status.textContent = `Đã tạo ngân sách cho “${body.tenDanhMuc || "danh mục chi tiêu"}” với giới hạn ${money(Number(body.soTienGioiHan || soTienGioiHan))}.`;
       status.className = "api-connection-status is-success";
       showToast("Đã tạo ngân sách mới.");
     } catch (error) {
-      status.textContent = error instanceof TypeError
-        ? "Không thể gọi API ngân sách. Kiểm tra Flask Gateway."
-        : (error.message || "Không thể tạo ngân sách.");
+      status.textContent = creationConfirmed
+        ? "Backend đã chấp nhận tạo ngân sách nhưng giao diện gặp lỗi khi cập nhật. Hãy tải lại ngân sách; không gửi lại biểu mẫu ngay."
+        : requestOutcomeUnknown && error instanceof TypeError
+          ? "Không nhận được phản hồi; ngân sách có thể đã được tạo. Hãy tải lại ngân sách trước khi thử lại."
+          : error instanceof TypeError
+            ? "Không thể gọi API ngân sách. Kiểm tra Flask Gateway."
+            : (error.message || "Không thể tạo ngân sách.");
       status.className = "api-connection-status is-error";
     } finally {
       button.disabled = false;
@@ -471,7 +498,7 @@
 
   async function refreshTransactionsFromApi() {
     const status = $("#transactionListStatus");
-    if (!activeApiToken || !status) return;
+    if (!activeApiToken || !status) return false;
     status.textContent = "Đang tải giao dịch thu/chi...";
     status.className = "api-connection-status";
     try {
@@ -483,6 +510,9 @@
       const body = (response.headers.get("content-type") || "").includes("application/json")
         ? await response.json() : await response.text();
       if (!response.ok) {
+        if (response.status === 401 && activeApiToken) {
+          logoutFromApi("Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.");
+        }
         const message = body && typeof body === "object" ? (body.detail || body.title || body.message) : null;
         throw new Error(`${response.status}: ${message || "Không thể tải lịch sử thu/chi."}`);
       }
@@ -493,17 +523,20 @@
       await refreshOverviewFromApi();
       await refreshDailyChartFromApi();
       await updateCashflowChart();
+      if (!activeApiToken) return false;
 
       status.textContent =
         `Đã tải ${body.length} giao dịch thu/chi gần nhất từ API.`;
       status.className = "api-connection-status is-success";
       const subtitle = $("#transactionListSubtitle");
       if (subtitle) subtitle.textContent = "Lịch sử thu/chi thật của người dùng đang đăng nhập.";
+      return true;
     } catch (error) {
       status.textContent = error instanceof TypeError
         ? "Không thể gọi API giao dịch. Kiểm tra Flask Gateway."
         : (error.message || "Không thể tải lịch sử thu/chi.");
       status.className = "api-connection-status is-error";
+      return false;
     }
   }
 
@@ -558,6 +591,9 @@ async function refreshOverviewFromApi() {
       : await response.text();
 
     if (!response.ok) {
+      if (response.status === 401 && activeApiToken) {
+        logoutFromApi("Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.");
+      }
       const message = body && typeof body === "object"
         ? body.detail || body.title || body.message
         : null;
@@ -732,14 +768,19 @@ async function refreshDailyChartFromApi() {
       }
     );
 
-    const body = await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    const body = contentType.includes("application/json")
+      ? await response.json()
+      : await response.text();
 
     if (!response.ok) {
-      throw new Error(
-        `${response.status}: ${
-          body.detail || body.title || "Không thể tải biểu đồ."
-        }`
-      );
+      if (response.status === 401 && activeApiToken) {
+        logoutFromApi("Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.");
+      }
+      const message = body && typeof body === "object"
+        ? (body.detail || body.title || body.message)
+        : (typeof body === "string" && body.trim() ? body.trim() : null);
+      throw new Error(`${response.status}: ${message || "Không thể tải biểu đồ."}`);
     }
 
     if (!Array.isArray(body)) {
@@ -811,11 +852,12 @@ async function refreshDailyChartFromApi() {
 
     plot.replaceChildren(fragment);
 
-    if (body.length > 0) {
-      period.textContent =
-        `${body[0].ngay} đến ${body[body.length - 1].ngay}`;
-    } else {
-      period.textContent = "Không có dữ liệu trong khoảng ngày.";
+    if (period) {
+      if (body.length > 0 && body[0]?.ngay && body[body.length - 1]?.ngay) {
+        period.textContent = `${body[0].ngay} đến ${body[body.length - 1].ngay}`;
+      } else {
+        period.textContent = "Không có dữ liệu trong khoảng ngày.";
+      }
     }
 
     status.textContent = `Đã tải ${body.length} ngày từ API.`;
@@ -850,7 +892,10 @@ async function refreshDailyChartFromApi() {
     button.textContent = "Đang tạo...";
     status.textContent = "Đang tạo danh mục...";
     status.className = "api-connection-status";
+    let requestOutcomeUnknown = false;
+    let creationConfirmed = false;
     try {
+      requestOutcomeUnknown = true;
       const response = await fetch(`${API_BASE_URL}/api/danh-muc`, {
         method: "POST",
         headers: {
@@ -861,23 +906,37 @@ async function refreshDailyChartFromApi() {
         body: JSON.stringify({ tenDanhMuc, loaiGd }),
         cache: "no-store"
       });
+      requestOutcomeUnknown = false;
+      creationConfirmed = response.ok;
       const body = (response.headers.get("content-type") || "").includes("application/json")
         ? await response.json() : await response.text();
       if (!response.ok) {
+        if (response.status === 401 && activeApiToken) {
+          logoutFromApi("Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.");
+        }
         const message = body && typeof body === "object" ? (body.detail || body.title || body.message) : null;
         throw new Error(`${response.status}: ${message || "Không thể tạo danh mục."}`);
       }
       $("#createCategoryForm").reset();
       $("#newCategoryKind").value = loaiGd;
-      await refreshCategoriesFromApi();
+      const refreshed = await refreshCategoriesFromApi();
       updateCategoryOptions();
+      if (!refreshed) {
+        status.textContent = "Danh mục đã được tạo, nhưng không tải lại được danh sách. Hãy nhấn Tải lại danh mục; không cần gửi lại biểu mẫu.";
+        status.className = "api-connection-status is-error";
+        return;
+      }
       status.textContent = `Đã tạo danh mục “${tenDanhMuc}” (${loaiGd === "thu" ? "thu nhập" : "chi tiêu"}).`;
       status.className = "api-connection-status is-success";
       showToast("Đã tạo danh mục mới.");
     } catch (error) {
-      status.textContent = error instanceof TypeError
-        ? "Không thể gọi API danh mục. Kiểm tra Flask Gateway."
-        : (error.message || "Không thể tạo danh mục.");
+      status.textContent = creationConfirmed
+        ? "Backend đã chấp nhận tạo danh mục nhưng giao diện gặp lỗi khi cập nhật. Hãy tải lại danh mục; không gửi lại biểu mẫu ngay."
+        : requestOutcomeUnknown && error instanceof TypeError
+          ? "Không nhận được phản hồi; danh mục có thể đã được tạo. Hãy tải lại danh mục trước khi thử lại."
+          : error instanceof TypeError
+            ? "Không thể gọi API danh mục. Kiểm tra Flask Gateway."
+            : (error.message || "Không thể tạo danh mục.");
       status.className = "api-connection-status is-error";
     } finally {
       button.disabled = false;
@@ -1034,7 +1093,7 @@ async function refreshDailyChartFromApi() {
     }
     const modal = $("#transactionModal");
     $("#transactionForm").reset();
-    $("#transactionDate").value = new Date().toLocaleDateString("en-CA");
+    $("#transactionDate").value = localDateString();
     $("#transactionKind").value = "chi";
     updateTransactionAccountOptions();
     updateCategoryOptions();
@@ -1154,6 +1213,9 @@ try {
         ? await response.json() : await response.text();
       if (!response.ok) {
         let message = body && typeof body === "object" ? (body.detail || body.title || body.message) : null;
+        if (response.status === 401 && activeApiToken) {
+          logoutFromApi("Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.");
+        }
         if (response.status === 400) message = message || "Dữ liệu giao dịch không hợp lệ.";
         else if (response.status === 401) message = "Phiên đăng nhập hết hạn hoặc không hợp lệ. Hãy đăng nhập lại.";
         else if (response.status === 409) message = message || "Giao dịch bị từ chối. Kiểm tra số dư, tài khoản và danh mục.";
@@ -1168,16 +1230,47 @@ try {
       status.textContent = `Đã ghi nhận ${kind === "thu" ? "thu nhập" : "chi tiêu"}${transactionId != null ? ` (mã #${transactionId})` : ""}. Đang làm mới dữ liệu...`;
       status.className = "api-connection-status is-success";
       $("#transactionForm").reset();
-      $("#transactionDate").value = new Date().toLocaleDateString("en-CA");
+      $("#transactionDate").value = localDateString();
       closeModal();
       await refreshAccountsFromApi();
       showToast(`Đã ghi nhận ${kind === "thu" ? "thu nhập" : "chi tiêu"}${transactionId != null ? ` (#${transactionId})` : ""}.`);
     } catch (error) {
-      status.textContent = error instanceof TypeError
-        ? "Không nhận được phản hồi từ API. Hãy tải lại lịch sử trước khi gửi lại để tránh tạo giao dịch trùng."
-        : (error.message || "Đã xảy ra lỗi khi lưu giao dịch.");
-      status.className = "api-connection-status is-error";
-    } finally {
+        const errorMessage =
+            error.message || "Đã xảy ra lỗi khi lưu giao dịch.";
+
+        const isConflict = /^409:/.test(errorMessage);
+
+        status.textContent = isConflict
+            ? "Giao dịch bị từ chối. Đang tải lại dữ liệu..."
+            : error instanceof TypeError
+                ? "Không nhận được phản hồi từ API. Hãy tải lại dữ liệu trước khi gửi lại để tránh tạo giao dịch trùng."
+                : errorMessage;
+
+        status.className = "api-connection-status is-error";
+
+        if (isConflict && activeApiToken) {
+            try {
+                const refreshed = await refreshAccountsFromApi();
+
+                if (!refreshed) {
+                    status.textContent =
+                        "Không thể tải lại tài khoản. Hãy kiểm tra kết nối trước khi thử lại.";
+                    status.className = "api-connection-status is-error";
+                    return;
+                }
+
+                status.textContent =
+                    "Giao dịch chưa được xác nhận thành công. Danh sách tài khoản đã được tải lại; hãy kiểm tra lịch sử trước khi quyết định thử lại.";
+
+                status.className = "api-connection-status is-error";
+            } catch {
+                status.textContent =
+                    "Giao dịch bị từ chối. Không thể tải lại dữ liệu; hãy tải lại tài khoản trước khi thử lại.";
+
+                status.className = "api-connection-status is-error";
+            }
+        }
+} finally {
       button.disabled = false;
       button.textContent = "Lưu giao dịch";
     }
@@ -1258,6 +1351,9 @@ try {
       : await response.text();
 
     if (!response.ok) {
+      if (response.status === 401 && activeApiToken) {
+        logoutFromApi("Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.");
+      }
       const message =
         body && typeof body === "object"
           ? body.detail || body.title || body.message
@@ -1561,9 +1657,9 @@ try {
         } else if (response.status === 429) {
           message = "Bạn gửi yêu cầu quá nhanh. Hãy đợi một lát rồi thử lại.";
         } else if (response.status === 502) {
-          message = "502: Flask không kết nối được backend C#; kiểm tra BACKEND_URL.";
+          message = "Flask không kết nối được backend C#; kiểm tra BACKEND_URL.";
         } else if (response.status === 503) {
-          message = "503: Gateway hoặc Redis đang gặp sự cố.";
+          message = "Gateway hoặc Redis đang gặp sự cố.";
         } else if (body && typeof body === "object") {
           message = body.detail || body.title || body.message || message;
         }
@@ -1612,7 +1708,7 @@ try {
     if (!activeApiToken) {
       status.textContent = "Vui lòng đăng nhập trước.";
       status.className = "api-connection-status is-error";
-      return;
+      return false;
     }
 
     button.disabled = true;
@@ -1638,26 +1734,14 @@ try {
       if (!response.ok) {
         let message = "Không thể tải tài khoản.";
         if (response.status === 401) {
-          activeApiToken = null;
-          activeApiUser = null;
-          $("#loginForm").hidden = false;
-          $("#apiSessionPanel").hidden = true;
-          $("#createAccountForm").hidden = true;
-          $("#apiTransferPanel").hidden = true;
-          $("#transferHistoryPanel").hidden = true;
-          $("#categories").hidden = true;
-          $("#apiBudgetsPanel").hidden = true;
-          $("#demoBudgetsPanel").hidden = false;
-          activeApiBudgets = [];
-          activeApiCategories = [];
-          activeApiTransactions = [];
-          message = "401: Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.";
+          message = "Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.";
+          logoutFromApi(message);
         } else if (response.status === 403) {
-          message = "403: Bạn không có quyền xem danh sách tài khoản.";
+          message = "Bạn không có quyền xem danh sách tài khoản.";
         } else if (response.status === 502) {
-          message = "502: Flask không kết nối được backend C#; kiểm tra BACKEND_URL.";
+          message = "Flask không kết nối được backend C#; kiểm tra BACKEND_URL.";
         } else if (response.status === 503) {
-          message = "503: Gateway chưa kết nối được Redis hoặc dịch vụ bảo vệ đang lỗi.";
+          message = "Gateway chưa kết nối được Redis hoặc dịch vụ bảo vệ đang lỗi.";
         } else if (body && typeof body === "object") {
           message = body.detail || body.title || body.message || message;
         }
@@ -1669,6 +1753,7 @@ try {
       }
 
       renderApiAccounts(body);
+      updateApiSummary();
       $("#createAccountForm").hidden = false;
       $("#createAccountForm").removeAttribute("hidden");
       $("#apiTransferPanel").hidden = false;
@@ -1684,18 +1769,50 @@ try {
         refreshTransactionsFromApi(),
         refreshBudgetsFromApi()
       ]);
+      return Boolean(activeApiToken);
     } catch (error) {
       status.textContent = error instanceof TypeError
         ? "Không thể gọi API. Kiểm tra Flask, CORS và địa chỉ frontend."
         : (error.message || "Đã xảy ra lỗi khi tải tài khoản.");
       status.className = "api-connection-status is-error";
+      return false;
     } finally {
       button.disabled = false;
       button.textContent = "Tải lại tài khoản";
     }
   }
 
-  function logoutFromApi() {
+  function clearApiChartsForLoggedOutState() {
+    const dailyPlot = $("#dailyChartPlot");
+    if (dailyPlot) dailyPlot.replaceChildren();
+
+    const dailyStatus = $("#dailyChartStatus");
+    if (dailyStatus) {
+      dailyStatus.textContent = "Đăng nhập để tải dữ liệu biểu đồ thu/chi.";
+      dailyStatus.className = "api-connection-status";
+    }
+
+    const dailyPeriod = $("#dailyChartPeriod");
+    if (dailyPeriod) dailyPeriod.textContent = "—";
+
+    const groups = document.querySelector(".bar-groups");
+    if (groups) groups.replaceChildren();
+
+    const yLabels = document.querySelector(".y-labels");
+    if (yLabels) {
+      yLabels.replaceChildren(...["—", "—", "—", "—", "0"].map(value => {
+        const label = document.createElement("span");
+        label.textContent = value;
+        return label;
+      }));
+    }
+
+    const subtitle = document.querySelector("#reports .panel-heading p");
+    if (subtitle) subtitle.textContent = "Đăng nhập để xem dữ liệu thu nhập và chi tiêu.";
+  }
+
+  function logoutFromApi(reason = null) {
+    const sessionError = typeof reason === "string" && reason.trim() ? reason : null;
     activeApiToken = null;
     activeApiUser = null;
     activeApiAccounts = [];
@@ -1703,6 +1820,8 @@ try {
     activeApiTransactions = [];
     activeApiBudgets = [];
     pendingTransferAttempt = null;
+    pendingTransactionAttempt = null;
+    if ($("#transactionModal")?.classList.contains("is-open")) closeModal();
     $("#loginPassword").value = "";
     $("#loginForm").hidden = false;
     $("#apiSessionPanel").hidden = true;
@@ -1730,11 +1849,12 @@ try {
     $("#apiBadge").classList.remove("is-connected");
     $("#accountsSubtitle").textContent = "Dữ liệu đang là minh họa; đăng nhập để tải danh sách thật.";
     const status = $("#apiConnectionStatus");
-    status.textContent = "Đã đăng xuất. JWT đã được xóa khỏi bộ nhớ của trang.";
-    status.className = "api-connection-status";
+    status.textContent = sessionError || "Đã đăng xuất. JWT đã được xóa khỏi bộ nhớ của trang.";
+    status.className = sessionError ? "api-connection-status is-error" : "api-connection-status";
     updateSummary();
     renderTransactions();
-    showToast("Đã đăng xuất khỏi Finora.");
+    clearApiChartsForLoggedOutState();
+    if (!sessionError) showToast("Đã đăng xuất khỏi Finora.");
   }
 
   async function createAccountFromApi(event) {
@@ -1771,8 +1891,11 @@ try {
     button.textContent = "Đang tạo...";
     status.textContent = "Đang gửi yêu cầu tạo tài khoản...";
     status.className = "api-connection-status";
+    let requestOutcomeUnknown = false;
+    let creationConfirmed = false;
 
     try {
+      requestOutcomeUnknown = true;
       const response = await fetch(`${API_BASE_URL}/api/tai-khoan`, {
         method: "POST",
         headers: {
@@ -1783,6 +1906,8 @@ try {
         body: JSON.stringify({ tenTk, loaiTk, soDuBanDau }),
         cache: "no-store"
       });
+      requestOutcomeUnknown = false;
+      creationConfirmed = response.ok;
 
       const contentType = response.headers.get("content-type") || "";
       const responseBody = contentType.includes("application/json")
@@ -1794,26 +1919,14 @@ try {
         if (response.status === 400) {
           message = responseBody?.detail || responseBody?.title || "Dữ liệu tài khoản không hợp lệ.";
         } else if (response.status === 401) {
-          message = "401: JWT hết hạn hoặc không hợp lệ. Hãy đăng nhập lại và tải danh sách tài khoản.";
-          activeApiToken = null;
-          activeApiUser = null;
-          $("#loginForm").hidden = false;
-          $("#apiSessionPanel").hidden = true;
-          $("#createAccountForm").hidden = true;
-          $("#apiTransferPanel").hidden = true;
-          $("#transferHistoryPanel").hidden = true;
-          $("#categories").hidden = true;
-          $("#apiBudgetsPanel").hidden = true;
-          $("#demoBudgetsPanel").hidden = false;
-          activeApiBudgets = [];
-          $("#apiConnectionStatus").textContent = message;
-          $("#apiConnectionStatus").className = "api-connection-status is-error";
+          message = "JWT hết hạn hoặc không hợp lệ. Hãy đăng nhập lại và tải danh sách tài khoản.";
+          if (activeApiToken) logoutFromApi(message);
         } else if (response.status === 403) {
-          message = "403: Bạn không có quyền tạo tài khoản.";
+          message = "Bạn không có quyền tạo tài khoản.";
         } else if (response.status === 502) {
-          message = "502: Flask không kết nối được backend C#.";
+          message = "Flask không kết nối được backend C#.";
         } else if (response.status === 503) {
-          message = "503: Gateway hoặc Redis đang gặp sự cố.";
+          message = "Gateway hoặc Redis đang gặp sự cố.";
         } else if (responseBody && typeof responseBody === "object") {
           message = responseBody.detail || responseBody.title || responseBody.message || message;
         }
@@ -1834,7 +1947,10 @@ try {
       });
 
       if (!listResponse.ok) {
-        throw new Error(`Tài khoản đã được tạo nhưng không tải lại được danh sách (HTTP ${listResponse.status}). Nhấn Tải từ API để làm mới.`);
+        if (listResponse.status === 401 && activeApiToken) {
+          logoutFromApi("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+        }
+        throw new Error(`Tài khoản đã được tạo nhưng không tải lại được danh sách (HTTP ${listResponse.status}). Nhấn Tải lại tài khoản để làm mới.`);
       }
 
       const accounts = await listResponse.json();
@@ -1843,6 +1959,7 @@ try {
       }
 
       renderApiAccounts(accounts);
+      updateApiSummary();
       status.textContent = `Tạo tài khoản thành công${createdId != null ? ` (mã #${createdId})` : ""}. Đã tải lại ${accounts.length} tài khoản.`;
       status.className = "api-connection-status is-success";
       $("#apiConnectionStatus").textContent = `Kết nối thành công. Đã tải ${accounts.length} tài khoản từ API.`;
@@ -1857,9 +1974,13 @@ try {
       ]);
       showToast("Đã tạo tài khoản và tải lại danh sách từ API.");
     } catch (error) {
-      status.textContent = error instanceof TypeError
-        ? "Không thể gọi API. Kiểm tra Flask, CORS và địa chỉ frontend."
-        : (error.message || "Đã xảy ra lỗi khi tạo tài khoản.");
+      status.textContent = creationConfirmed
+        ? "Tài khoản đã được tạo nhưng giao diện chưa tải lại được danh sách. Hãy nhấn Tải lại tài khoản; không gửi lại biểu mẫu ngay."
+        : requestOutcomeUnknown && error instanceof TypeError
+          ? "Không nhận được phản hồi; tài khoản có thể đã được tạo. Hãy tải lại danh sách tài khoản trước khi thử lại."
+          : error instanceof TypeError
+            ? "Không thể gọi API. Kiểm tra Flask, CORS và địa chỉ frontend."
+            : (error.message || "Đã xảy ra lỗi khi tạo tài khoản.");
       status.className = "api-connection-status is-error";
     } finally {
       button.disabled = false;
@@ -1978,26 +2099,17 @@ try {
           : null;
         if (response.status === 400) {
           message = message || "Dữ liệu chuyển tiền không hợp lệ.";
-          pendingTransferAttempt = null;
         } else if (response.status === 401) {
           message = "Phiên đăng nhập hết hạn hoặc không hợp lệ. Đăng nhập lại để tiếp tục.";
-          activeApiToken = null;
-          activeApiUser = null;
-          activeApiAccounts = [];
-          pendingTransferAttempt = null;
-          $("#loginForm").hidden = false;
-          $("#apiSessionPanel").hidden = true;
-          $("#createAccountForm").hidden = true;
-          $("#apiTransferPanel").hidden = true;
+          if (activeApiToken) logoutFromApi(message);
         } else if (response.status === 409) {
-          message = message || "Giao dịch bị từ chối. Hãy kiểm tra số dư và thông tin tài khoản.";
-          pendingTransferAttempt = null;
+          message = message || "Giao dịch bị từ chối. Hãy kiểm tra số dư và thông tin tài khoản. Nếu thử lại cùng yêu cầu, khóa idempotency sẽ được giữ nguyên.";
         } else if (response.status === 429) {
           message = "Bạn gửi yêu cầu quá nhanh. Hãy đợi một lát rồi thử lại.";
         } else if (response.status === 502) {
-          message = "502: Flask không kết nối được backend C#. Nếu thử lại, hãy giữ nguyên thông tin giao dịch.";
+          message = "Flask không kết nối được backend C#. Nếu thử lại, hãy giữ nguyên thông tin giao dịch.";
         } else if (response.status === 503) {
-          message = "503: Gateway hoặc Redis đang gặp sự cố. Giữ nguyên thông tin nếu cần thử lại.";
+          message = "Gateway hoặc Redis đang gặp sự cố. Giữ nguyên thông tin nếu cần thử lại.";
         } else {
           message = message || `Không thể hoàn tất giao dịch (HTTP ${response.status}). Giữ nguyên thông tin nếu cần thử lại.`;
         }
@@ -2073,7 +2185,7 @@ try {
     $("#todayLabel").textContent = new Intl.DateTimeFormat("vi-VN", {
       weekday: "long", day: "numeric", month: "long", year: "numeric"
     }).format(today).toLocaleUpperCase("vi");
-    $("#transactionDate").value = today.toLocaleDateString("en-CA");
+    $("#transactionDate").value = localDateString(today);
     const localDate = value => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
     $("#newBudgetStart").value = localDate(new Date(today.getFullYear(), today.getMonth(), 1));
     $("#newBudgetEnd").value = localDate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
