@@ -478,3 +478,20 @@ td:first-child { padding-left: 11px; }
     gap: 5px;
   }
 }
+
+.summary-bottom {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summary-bottom .trend {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.summary-bottom > span:not(.trend) {
+  min-width: 0;
+  overflow-wrap: break-word;
+}

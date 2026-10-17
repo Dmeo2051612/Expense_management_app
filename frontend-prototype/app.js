@@ -522,30 +522,44 @@
 async function refreshOverviewFromApi() {
   if (!activeApiToken) return;
 
-  const subtitle = $(".welcome-row .subtitle");
+  const incomeElement = document.getElementById("incomeAmount");
+  const expenseElement = document.getElementById("expenseAmount");
+  const incomeTrend = document.getElementById("incomeTrend");
+  const expenseTrend = document.getElementById("expenseTrend");
 
-  try {
+  function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  async function fetchSummary(fromDate, toDate) {
+    const params = new URLSearchParams({
+      tuNgay: formatDate(fromDate),
+      denNgay: formatDate(toDate)
+    });
+
     const response = await fetch(
-      `${API_BASE_URL}/api/thong-ke/tong-quan`,
+      `${API_BASE_URL}/api/thong-ke/tong-quan?${params}`,
       {
         method: "GET",
         headers: {
-          "Accept": "application/json",
-          "Authorization": `Bearer ${activeApiToken}`
+          Accept: "application/json",
+          Authorization: `Bearer ${activeApiToken}`
         },
         cache: "no-store"
       }
     );
 
     const contentType = response.headers.get("content-type") || "";
-
     const body = contentType.includes("application/json")
       ? await response.json()
       : await response.text();
 
     if (!response.ok) {
       const message = body && typeof body === "object"
-        ? (body.detail || body.title || body.message)
+        ? body.detail || body.title || body.message
         : null;
 
       throw new Error(
@@ -553,29 +567,142 @@ async function refreshOverviewFromApi() {
       );
     }
 
-    if (!body || typeof body !== "object") {
-      throw new Error("API thống kê trả về dữ liệu không hợp lệ.");
+    return body;
+  }
+
+  function updateTrend(element, currentValue, previousValue, isExpense) {
+    if (!element) return;
+
+    const current = Number(currentValue) || 0;
+    const previous = Number(previousValue) || 0;
+
+    if (previous === 0) {
+      if (current === 0) {
+        element.textContent = "Không phát sinh ở cả hai kỳ";
+        element.className = "trend";
+      } else {
+        element.textContent = "Có phát sinh mới";
+        element.className = `trend ${isExpense ? "negative" : "positive"}`;
+      }
+
+      return;
     }
 
-    $("#incomeAmount").innerHTML =
-      amountMarkup(Number(body.tongThu || 0));
+    const change = ((current - previous) / previous) * 100;
+    const arrow = change > 0 ? "↗" : change < 0 ? "↘" : "→";
 
-    $("#expenseAmount").innerHTML =
-      amountMarkup(Number(body.tongChi || 0));
+    let statusClass;
 
-    if (subtitle) {
-      subtitle.textContent =
-        `Thống kê thực từ ${body.tuNgay} đến ${body.denNgay}` +
-        ` · ${Number(body.soGiaoDich || 0)} giao dịch thu/chi.`;
+    if (change === 0) {
+      statusClass = "trend";
+    } else if (isExpense) {
+      // Chi tiêu giảm là tốt; chi tiêu tăng là không tốt.
+      statusClass = change < 0 ? "trend positive" : "trend negative";
+    } else {
+      // Thu nhập tăng là tốt; thu nhập giảm là không tốt.
+      statusClass = change > 0 ? "trend positive" : "trend negative";
     }
+
+    const percentage = Math.abs(change).toLocaleString("vi-VN", {
+      maximumFractionDigits: 1
+    });
+
+    element.textContent = `${arrow} ${percentage}%`;
+    element.className = statusClass;
+  }
+
+  const now = new Date();
+
+  const currentStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    1
+  );
+
+  const currentEnd = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+
+  const previousStart = new Date(
+    now.getFullYear(),
+    now.getMonth() - 1,
+    1
+  );
+
+  const lastDayPreviousMonth = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    0
+  ).getDate();
+
+  const comparisonDay = Math.min(
+    now.getDate(),
+    lastDayPreviousMonth
+  );
+
+  const previousEnd = new Date(
+    previousStart.getFullYear(),
+    previousStart.getMonth(),
+    comparisonDay
+  );
+
+  try {
+    const [current, previous] = await Promise.all([
+      fetchSummary(currentStart, currentEnd),
+      fetchSummary(previousStart, previousEnd)
+    ]);
+
+    if (incomeElement) {
+      incomeElement.innerHTML = amountMarkup(
+        Number(current.tongThu) || 0
+      );
+    }
+
+    if (expenseElement) {
+      expenseElement.innerHTML = amountMarkup(
+        Number(current.tongChi) || 0
+      );
+    }
+
+    updateTrend(
+      incomeTrend,
+      current.tongThu,
+      previous.tongThu,
+      false
+    );
+
+    updateTrend(
+      expenseTrend,
+      current.tongChi,
+      previous.tongChi,
+      true
+    );
+
+    const label = document.getElementById("incomePeriodLabel");
+    const expenseLabel = document.getElementById("expensePeriodLabel");
+
+    const periodText = `So với cùng kỳ tháng trước (${formatDate(previousStart)} – ${formatDate(previousEnd)})`;
+
+    if (label) label.textContent = periodText;
+    if (expenseLabel) expenseLabel.textContent = periodText;
+
   } catch (error) {
-    $("#incomeAmount").textContent = "—";
-    $("#expenseAmount").textContent = "—";
+    if (incomeElement) incomeElement.textContent = "—";
+    if (expenseElement) expenseElement.textContent = "—";
 
-    if (subtitle) {
-      subtitle.textContent =
-        error.message || "Không thể tải thống kê tài chính.";
+    if (incomeTrend) {
+      incomeTrend.textContent = "Không thể tải so sánh";
+      incomeTrend.className = "trend negative";
     }
+
+    if (expenseTrend) {
+      expenseTrend.textContent = "Không thể tải so sánh";
+      expenseTrend.className = "trend negative";
+    }
+
+    console.error("Không thể tải thống kê tổng quan:", error);
   }
 }
 
