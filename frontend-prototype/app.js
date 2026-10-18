@@ -1168,31 +1168,30 @@ async function refreshDailyChartFromApi() {
 
     const ngayGd = date ? new Date(`${date}T12:00:00`).toISOString() : null;
     const payload = { tkId, danhMucId, loaiGd: kind, soTien, ngayGd, moTa: moTa || null };
-    button.disabled = true;
     const signature = JSON.stringify(payload);
-let idempotencyKey;
+    let idempotencyKey;
 
-try {
-  if (
-    pendingTransactionAttempt &&
-    pendingTransactionAttempt.signature === signature
-  ) {
-    idempotencyKey = pendingTransactionAttempt.key;
-  } else {
-    idempotencyKey = createIdempotencyKey();
+    try {
+      if (
+        pendingTransactionAttempt &&
+        pendingTransactionAttempt.signature === signature
+      ) {
+        idempotencyKey = pendingTransactionAttempt.key;
+      } else {
+        idempotencyKey = createIdempotencyKey();
+        pendingTransactionAttempt = {
+          signature,
+          key: idempotencyKey
+        };
+      }
+    } catch (error) {
+      status.textContent = error.message || "Không thể tạo mã yêu cầu giao dịch.";
+      status.className = "api-connection-status is-error";
+      return;
+    }
 
-    pendingTransactionAttempt = {
-      signature,
-      key: idempotencyKey
-    };
-  }
-} catch (error) {
-  status.textContent =
-    error.message || "Không thể tạo mã yêu cầu giao dịch.";
-
-  status.className = "api-connection-status is-error";
-  return;
-}
+    // Chỉ khóa nút sau khi tạo / lấy được Idempotency-Key thành công.
+    button.disabled = true;
     button.textContent = "Đang lưu...";
     status.textContent = "Đang lưu giao dịch và cập nhật số dư...";
     status.className = "api-connection-status";
@@ -1232,8 +1231,12 @@ try {
       $("#transactionForm").reset();
       $("#transactionDate").value = localDateString();
       closeModal();
-      await refreshAccountsFromApi();
-      showToast(`Đã ghi nhận ${kind === "thu" ? "thu nhập" : "chi tiêu"}${transactionId != null ? ` (#${transactionId})` : ""}.`);
+      const accountsRefreshed = await refreshAccountsFromApi();
+      if (accountsRefreshed) {
+        showToast(`Đã ghi nhận ${kind === "thu" ? "thu nhập" : "chi tiêu"}${transactionId != null ? ` (#${transactionId})` : ""}.`);
+      } else {
+        showToast("Giao dịch đã được lưu, nhưng chưa tải lại được số dư. Hãy nhấn Tải lại tài khoản.");
+      }
     } catch (error) {
         const errorMessage =
             error.message || "Đã xảy ra lỗi khi lưu giao dịch.";
